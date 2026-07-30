@@ -29,10 +29,20 @@
       <h1>Tools</h1>
       <p class="sub">Pick a tool to open it.</p>
     </div>
-    <button id="logout-btn" class="btn btn-sm">Log out</button>
+    <div class="header-actions">
+      <button id="logout-btn" class="btn btn-sm">Log out</button>
+      <button id="add-tool-btn" class="btn btn-primary">+ Add Tool</button>
+    </div>
   </header>
   <div id="tool-grid"></div>
 </div>
+
+<!-- Generic modal -->
+<div id="modal-overlay" style="display:none;">
+  <div id="modal-box"></div>
+</div>
+
+<div id="toast" style="display:none;"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>

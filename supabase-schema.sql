@@ -10,6 +10,36 @@
 
 create extension if not exists pgcrypto;
 
+create table if not exists tools (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  description text,
+  icon text not null default '🧩',
+  href text not null,
+  sort_order int not null default 0,
+  created_at timestamptz not null default now()
+);
+
+alter table tools enable row level security;
+
+drop policy if exists "public read" on tools;
+drop policy if exists "authenticated insert" on tools;
+drop policy if exists "authenticated update" on tools;
+drop policy if exists "authenticated delete" on tools;
+create policy "public read" on tools for select using (true);
+create policy "authenticated insert" on tools for insert with check (auth.role() = 'authenticated');
+create policy "authenticated update" on tools for update using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "authenticated delete" on tools for delete using (auth.role() = 'authenticated');
+
+-- Seed the menu with the tool that already exists, if it's not there yet.
+insert into tools (name, description, icon, href, sort_order)
+select 'Widget Scenario Specs',
+       'Document widget/feature UX scenarios — triggers, messages, popups, backend behavior — for manager review.',
+       '🧩',
+       'tools/widget-scenario-spec/index.html',
+       0
+where not exists (select 1 from tools where href = 'tools/widget-scenario-spec/index.html');
+
 create table if not exists projects (
   id uuid primary key default gen_random_uuid(),
   title text not null,

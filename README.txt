@@ -114,6 +114,19 @@ USING THE WIDGET SCENARIO SPECS TOOL
 
 ADDING A NEW TOOL
 -------------------
+Adding a tool is two separate things: registering its menu card (no code,
+done from the portal itself), and building what it actually links to
+(requires code — this doesn't build the tool for you).
+
+Registering the card:
+- Click "+ Add Tool" on the menu. Fill in a name, pick an icon from the
+  picker, write a short description, and set the Link — the path the
+  card opens (e.g. tools/your-tool-slug/index.html) once you've built it.
+- "Edit" / "Delete" on any card let you update or remove it later. This
+  is all stored in Supabase (the "tools" table), not in a file, so it's
+  the same for everyone who logs into the portal.
+
+Building the tool behind the link:
 1. Create a new folder: tools/<your-tool-slug>/
 2. Build it as its own self-contained index.html/app.js/style.css inside
    that folder, same pattern as tools/widget-scenario-spec/:
@@ -128,12 +141,9 @@ ADDING A NEW TOOL
    supabase-schema.sql (or a new .sql file) following the same
    public-read / authenticated-write policy pattern, and re-run it in
    the Supabase SQL Editor.
-4. Register it in portal.js by adding an entry to the TOOLS array:
 
-     { name: 'Your Tool Name', description: '...', icon: '🛠️',
-       href: 'tools/your-tool-slug/index.html' }
-
-That's the whole integration — no other files need to change.
+You can register the card before or after building the tool — an
+unbuilt link just 404s until the folder exists.
 
 
 SHARING WITHOUT DEPLOYING (Vercel/GitHub not available to you)
