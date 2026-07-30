@@ -1,0 +1,70 @@
+{
+  "widgetName": "Weather Reminder Widget",
+  "problem": "Replace this with your problem statement — 2-3 lines on what's broken today and why this widget is needed.",
+  "placement": {
+    "page": "Homepage",
+    "position": "Top banner, below nav"
+  },
+  "categories": [
+    {
+      "category": "Time Selection",
+      "scenarios": [
+        {
+          "id": "default-time",
+          "name": "Default Time Selected",
+          "trigger": "User clicks the widget and does not change the time slot — default (e.g. 9 AM) is kept.",
+          "mockup": "images/default-time.png",
+          "message": "e.g. 'Reminder set for 9:00 AM daily.'",
+          "popup": "e.g. Confirmation toast: 'You're all set! We'll remind you at 9 AM.'",
+          "backend": "e.g. ea_reminder_set event fired with time=default; cron job scheduled for 09:00 daily; DB row inserted in reminders table."
+        },
+        {
+          "id": "custom-time-same-day",
+          "name": "Custom Time — Same Day",
+          "trigger": "User picks a specific hour slot from the 24-hour list before the current time has passed for today.",
+          "mockup": "images/custom-time-same-day.png",
+          "message": "e.g. 'Reminder set for 3:00 PM today.'",
+          "popup": "e.g. Toast: 'Got it — reminding you at 3 PM today.'",
+          "backend": "e.g. ea_reminder_set event fired with time=custom, day=today; cron scheduled for selected hour; existing default row updated, not duplicated."
+        },
+        {
+          "id": "custom-time-next-day",
+          "name": "Custom Time — Next Day",
+          "trigger": "User picks an hour slot that has already passed for today, so it rolls to tomorrow.",
+          "mockup": "images/custom-time-next-day.png",
+          "message": "e.g. 'That time's already passed today — reminder set for tomorrow at 3 PM instead.'",
+          "popup": "e.g. Toast with rollover note.",
+          "backend": "e.g. Same as above but next_run_date = tomorrow; flag rollover=true logged for analytics."
+        }
+      ]
+    },
+    {
+      "category": "Skip / Dismiss",
+      "scenarios": [
+        {
+          "id": "user-dismisses-widget",
+          "name": "User Dismisses Widget Without Selecting",
+          "trigger": "User clicks the close (X) icon on the widget without picking a time.",
+          "mockup": "images/dismiss-widget.png",
+          "message": "None sent.",
+          "popup": "None — widget just closes.",
+          "backend": "e.g. ea_widget_dismiss event fired; widget suppressed for this session/day per frequency cap rule."
+        }
+      ]
+    },
+    {
+      "category": "Edge Cases",
+      "scenarios": [
+        {
+          "id": "guest-user",
+          "name": "Guest (Not Logged In) Clicks Widget",
+          "trigger": "Widget click happens while IS_LOGGED_IN is false.",
+          "mockup": "images/guest-user.png",
+          "message": "e.g. 'Log in to set your reminder.'",
+          "popup": "e.g. Login modal shown instead of time picker.",
+          "backend": "e.g. No reminder row created; ea_widget_click event fired with logged_in=false for funnel tracking."
+        }
+      ]
+    }
+  ]
+}
