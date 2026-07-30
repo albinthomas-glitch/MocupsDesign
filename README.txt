@@ -169,9 +169,9 @@ saved.
 
 If you deploy this to Vercel (see "DEPLOYING TO VERCEL" below): Vercel
 only serves what's in the git repo, so config.local.js (gitignored) won't
-be there. Either upload it separately to your host after deploying, or
-if you need Code Store to work on the deployed copy, ask about wiring the
-token in as a proper environment variable instead of a client file.
+be there by default. To make Code Store work on the deployed URL too,
+see "Code Store on Vercel" in that section — it generates config.local.js
+at build time from a Vercel Environment Variable instead of from git.
 
 
 USING THE CODE STORE TOOL
@@ -247,6 +247,21 @@ DEPLOYING TO VERCEL (optional — only if you want a live shareable link)
 Since the data lives in Supabase (not in files), you generally don't
 need to redeploy after adding projects/scenarios/media — only redeploy
 if you change any of the .html/.js/.css files.
+
+Code Store on Vercel (optional):
+Code Store's GitHub token deliberately isn't in git (see "ONE-TIME SETUP:
+CODE STORE" above), so a plain Vercel deploy won't have it and Code Store
+will show "Not configured yet" on the live URL. To fix that:
+1. Vercel dashboard -> your project -> Settings -> Environment Variables.
+2. Add one named exactly GITHUB_TOKEN, value = your fine-grained token,
+   scoped to whichever environments you want (Production/Preview).
+3. Redeploy (Deployments -> ... -> Redeploy, or `vercel --prod` again).
+   package.json + vercel.json in this project already tell Vercel to run
+   generate-config-local.js during the build, which turns that
+   environment variable into config.local.js for that deploy only — it's
+   never written back into git.
+If you skip this, everything else (the portal, Widget Scenario Specs)
+still works fine on Vercel; only Code Store needs this extra step.
 
 
 LEGACY FILES
