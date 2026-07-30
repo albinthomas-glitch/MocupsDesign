@@ -121,7 +121,14 @@ USING THE WIDGET SCENARIO SPECS TOOL
 ONE-TIME SETUP: CODE STORE (GitHub instead of Supabase)
 -----------------------------------------------------------
 Code Store keeps snippets as plain files in a GitHub repo rather than in
-Supabase, so it needs its own credentials in config.js:
+Supabase. Its config is split across two files:
+  - config.js        -> repo owner/name/branch/path (not secret, committed)
+  - config.local.js   -> the actual GitHub token (secret, gitignored —
+                          never committed, never pushed)
+This split exists specifically so the token can never end up in git
+history. Putting it in config.js instead will get your push rejected by
+GitHub's push protection (or worse, actually leak it, if push protection
+isn't enabled on the target repo).
 
 1. Pick (or create) a GitHub repo to hold snippets. A private repo
    dedicated to this is recommended over reusing an existing project repo.
@@ -132,25 +139,39 @@ Supabase, so it needs its own credentials in config.js:
    - Under "Permissions" -> "Repository permissions", set
      "Contents" to "Read and write". Leave everything else as "No access".
    - Generate the token and copy it (GitHub only shows it once).
-3. Open config.js and fill in:
+3. Open config.js and fill in the non-secret values:
 
-     const GITHUB_TOKEN = "github_pat_...";
      const GITHUB_OWNER = "your-github-username";
      const GITHUB_REPO = "your-repo-name";
      const GITHUB_BRANCH = "main";
      const GITHUB_SNIPPETS_PATH = "snippets";
 
+4. Copy config.local.example.js to a new file named config.local.js
+   (same folder) and fill in the token:
+
+     const GITHUB_TOKEN = "github_pat_...";
+
+   config.local.js is listed in .gitignore, so `git status` should never
+   show it as a change to commit. If it ever does, stop and check your
+   .gitignore before committing.
+
 IMPORTANT: unlike the Supabase anon key, this token is not safe-by-design
 — it's shipped to the browser because this is a static site with no
 server, and it grants read/write on whatever repo you scoped it to.
 Scoping it to one dedicated repo with only "Contents" access (as above)
-limits what someone could do with it if config.js ever leaked. Anyone who
-can log into this portal can use this token, same trust level as
-everything else here.
+limits what someone could do with it if config.local.js ever leaked.
+Anyone who can log into this portal can use this token, same trust level
+as everything else here.
 
 The "snippets" folder in GITHUB_SNIPPETS_PATH doesn't need to exist ahead
 of time — GitHub creates it automatically the first time a snippet is
 saved.
+
+If you deploy this to Vercel (see "DEPLOYING TO VERCEL" below): Vercel
+only serves what's in the git repo, so config.local.js (gitignored) won't
+be there. Either upload it separately to your host after deploying, or
+if you need Code Store to work on the deployed copy, ask about wiring the
+token in as a proper environment variable instead of a client file.
 
 
 USING THE CODE STORE TOOL

@@ -11,18 +11,9 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const SHARED_LOGIN_EMAIL = "testop99QA@gmail.com";
 
 // ---- Code Store tool (tools/code-store/) ----
-// Unlike the Supabase anon key above, this token is NOT safe by design --
-// it grants direct access to whatever it's scoped to. It still ships to
-// the browser because this is a static site with no server, so:
-//   - Create a FINE-GRAINED token (github.com/settings/tokens?type=beta),
-//     scoped to ONLY the one repo below, with Contents: Read and write
-//     permission and nothing else.
-//   - Prefer a dedicated/private repo for snippets, not a repo with
-//     anything sensitive elsewhere in it.
-//   - Anyone who can view this file's contents (i.e. anyone logged into
-//     this portal) can use this token, so trust here = trust in the portal
-//     login, same as everything else in this app.
-const GITHUB_TOKEN = "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";
+// These four are NOT secret on their own (just a repo name/branch/path,
+// like a URL) so they're safe to commit here. The actual GitHub token is
+// NOT safe to commit -- see config.local.js (gitignored, never pushed).
 const GITHUB_OWNER = "albinthomas-glitch";
 const GITHUB_REPO = "MocupsDesign";
 const GITHUB_BRANCH = "main";

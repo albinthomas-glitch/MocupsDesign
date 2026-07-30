@@ -14,7 +14,8 @@ if (!configured) {
   document.body.innerHTML =
     '<div style="max-width:520px;margin:80px auto;font:14px -apple-system,Segoe UI,sans-serif;color:#5a6470;text-align:center;line-height:1.6;">' +
     '<strong style="color:#1c2126;">Not configured yet.</strong><br>' +
-    'Open <code>config.js</code> and fill in the Supabase values plus the GITHUB_* values ' +
+    'Open <code>config.js</code> and fill in the Supabase + GITHUB_OWNER/REPO values, and copy ' +
+    '<code>config.local.example.js</code> to <code>config.local.js</code> and fill in GITHUB_TOKEN ' +
     '(see README.txt for step-by-step setup).</div>';
 } else {
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
