@@ -1,7 +1,12 @@
--- Widget Scenario Spec — Supabase schema
--- Safe to re-run: paste this whole file into the Supabase SQL Editor and
--- click Run, whether this is your first time or you're reverting the
--- login/password update (no login for now -- see README).
+-- Tools Portal — Supabase schema
+-- Covers the shared portal login plus the "Widget Scenario Specs" tool's
+-- data. Safe to re-run: paste this whole file into the Supabase SQL Editor
+-- and click Run, whether this is your first time or you're re-applying the
+-- login-required policies.
+--
+-- Each future tool can add its own tables the same way: create them here
+-- (or in a new file), enable RLS, and follow the same public-read /
+-- authenticated-write pattern so the shared portal login protects it too.
 
 create extension if not exists pgcrypto;
 
@@ -50,54 +55,65 @@ alter table categories enable row level security;
 alter table scenarios enable row level security;
 alter table media enable row level security;
 
--- No login for now (see README) -- every visitor uses the public anon key,
--- so these policies allow anyone with that key to read/write. Don't put
--- sensitive data in this project, and don't hand the anon key out beyond
--- people you trust.
+-- The whole portal sits behind a shared login (Supabase Auth, see README).
+-- Anyone can read (needed for "Share" links to work without logging in),
+-- but only a signed-in session can write.
+drop policy if exists "public full access" on projects;
 drop policy if exists "public read" on projects;
 drop policy if exists "authenticated insert" on projects;
 drop policy if exists "authenticated update" on projects;
 drop policy if exists "authenticated delete" on projects;
-drop policy if exists "public full access" on projects;
-create policy "public full access" on projects for all using (true) with check (true);
+create policy "public read" on projects for select using (true);
+create policy "authenticated insert" on projects for insert with check (auth.role() = 'authenticated');
+create policy "authenticated update" on projects for update using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "authenticated delete" on projects for delete using (auth.role() = 'authenticated');
 
+drop policy if exists "public full access" on categories;
 drop policy if exists "public read" on categories;
 drop policy if exists "authenticated insert" on categories;
 drop policy if exists "authenticated update" on categories;
 drop policy if exists "authenticated delete" on categories;
-drop policy if exists "public full access" on categories;
-create policy "public full access" on categories for all using (true) with check (true);
+create policy "public read" on categories for select using (true);
+create policy "authenticated insert" on categories for insert with check (auth.role() = 'authenticated');
+create policy "authenticated update" on categories for update using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "authenticated delete" on categories for delete using (auth.role() = 'authenticated');
 
+drop policy if exists "public full access" on scenarios;
 drop policy if exists "public read" on scenarios;
 drop policy if exists "authenticated insert" on scenarios;
 drop policy if exists "authenticated update" on scenarios;
 drop policy if exists "authenticated delete" on scenarios;
-drop policy if exists "public full access" on scenarios;
-create policy "public full access" on scenarios for all using (true) with check (true);
+create policy "public read" on scenarios for select using (true);
+create policy "authenticated insert" on scenarios for insert with check (auth.role() = 'authenticated');
+create policy "authenticated update" on scenarios for update using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "authenticated delete" on scenarios for delete using (auth.role() = 'authenticated');
 
+drop policy if exists "public full access" on media;
 drop policy if exists "public read" on media;
 drop policy if exists "authenticated insert" on media;
 drop policy if exists "authenticated update" on media;
 drop policy if exists "authenticated delete" on media;
-drop policy if exists "public full access" on media;
-create policy "public full access" on media for all using (true) with check (true);
+create policy "public read" on media for select using (true);
+create policy "authenticated insert" on media for insert with check (auth.role() = 'authenticated');
+create policy "authenticated update" on media for update using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "authenticated delete" on media for delete using (auth.role() = 'authenticated');
 
 insert into storage.buckets (id, name, public)
 values ('media', 'media', true)
 on conflict (id) do nothing;
 
+drop policy if exists "public read media bucket" on storage.objects;
 drop policy if exists "public upload media bucket" on storage.objects;
 drop policy if exists "public update media bucket" on storage.objects;
 drop policy if exists "public delete media bucket" on storage.objects;
 drop policy if exists "authenticated upload media bucket" on storage.objects;
 drop policy if exists "authenticated update media bucket" on storage.objects;
 drop policy if exists "authenticated delete media bucket" on storage.objects;
-drop policy if exists "public read media bucket" on storage.objects;
 create policy "public read media bucket" on storage.objects
   for select using (bucket_id = 'media');
-create policy "public upload media bucket" on storage.objects
-  for insert with check (bucket_id = 'media');
-create policy "public update media bucket" on storage.objects
-  for update using (bucket_id = 'media');
-create policy "public delete media bucket" on storage.objects
-  for delete using (bucket_id = 'media');
+create policy "authenticated upload media bucket" on storage.objects
+  for insert with check (bucket_id = 'media' and auth.role() = 'authenticated');
+create policy "authenticated update media bucket" on storage.objects
+  for update using (bucket_id = 'media' and auth.role() = 'authenticated');
+create policy "authenticated delete media bucket" on storage.objects
+  for delete using (bucket_id = 'media' and auth.role() = 'authenticated');

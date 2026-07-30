@@ -1,30 +1,38 @@
-WIDGET SCENARIO SPEC — HOW TO USE
-==================================
+TOOLS PORTAL — HOW TO USE
+==========================
 
 WHAT THIS IS NOW
 -----------------
-This is a small app for documenting widget/feature scenarios so a manager
-can click through them. It now supports MULTIPLE projects, created from
-the browser itself — no more hand-editing a JSON file. Each project has:
-  - a title + description (+ optional problem statement / placement)
-  - categories, each with scenarios (trigger / message / popup / backend)
-  - screenshots or short videos attached to each scenario, uploaded
-    straight from the file picker
-  - a "Download PDF" button that exports the whole project (all
-    categories, scenarios, and screenshots) as a PDF you can email
-    directly — no hosting/deployment needed for this
-  - a "Share" button that copies a link straight to that project
-    (only useful if you deploy this app somewhere reachable by the
-    person you're sending it to — see the PDF option below if not)
+This is a password-protected portal that can hold multiple, unrelated
+tools. Open it, log in once, and you land on a menu of tool cards. Right
+now there's one: "Widget Scenario Specs" (documents widget/feature UX
+scenarios — trigger / message / popup / backend — for manager review,
+with screenshots or short videos, PDF export, and share links). You can
+add more tools later; see "ADDING A NEW TOOL" below.
+
+Layout:
+  index.html, portal.js, portal.css   -> the portal itself (login + menu)
+  theme.css                           -> shared design tokens/buttons/forms/
+                                          modal/toast/login styling, used by
+                                          the portal and every tool
+  config.js                           -> your Supabase project URL/key +
+                                          shared login email (one config
+                                          for the whole portal and all tools)
+  supabase-schema.sql                 -> database setup script
+  tools/widget-scenario-spec/         -> the first tool, self-contained
+                                          (index.html, app.js, style.css)
 
 Data lives in a free Supabase project (Postgres database + file storage),
-not in a local JSON file. The pages themselves (index.html/app.js/style.css)
-are still a plain static site you can host anywhere, e.g. Vercel.
+not in local files. The pages themselves are a plain static site you can
+host anywhere, e.g. Vercel, or just run locally.
 
-There is no login right now. Anyone with the app URL and Supabase anon key
-(the values in config.js) can view and edit. Don't put anything sensitive
-in here, and don't hand config.js out beyond people you trust. (A shared
-password / login can be added back later if needed — ask if you want it.)
+The whole portal is behind a single shared password, enforced by Supabase
+Auth (a real login, not just a hidden UI element) — so writes are only
+possible once someone has actually signed in. The one exception is a
+tool's "Share" links (?mode=view): those open straight to a read-only
+view with no password prompt, so whoever you send it to isn't blocked.
+Reading data is always public (needed for share links); only
+creating/editing/deleting requires login.
 
 
 ONE-TIME SETUP: CREATE YOUR SUPABASE PROJECT
@@ -36,9 +44,9 @@ ONE-TIME SETUP: CREATE YOUR SUPABASE PROJECT
 3. Open the SQL Editor (left sidebar) -> "New query".
 4. Open supabase-schema.sql from this folder, copy its entire contents,
    paste into the SQL editor, and click "Run".
-   This creates the tables (projects, categories, scenarios, media),
-   a public "media" storage bucket for screenshots/videos, and the
-   access policies described above (public read + write, no login).
+   This creates the tables the Widget Scenario Specs tool needs, a
+   public "media" storage bucket for screenshots/videos, and the access
+   policies described above (public read, login-required write).
 5. Go to Project Settings -> API. Copy the "Project URL" and the
    "anon public" API key.
 6. Open config.js in this folder and paste those two values in:
@@ -46,7 +54,17 @@ ONE-TIME SETUP: CREATE YOUR SUPABASE PROJECT
      const SUPABASE_URL = "https://xxxxxxxx.supabase.co";
      const SUPABASE_ANON_KEY = "eyJ...";
 
-That's it — the app is now wired to your database.
+7. Create the shared login account: Authentication -> Users -> Add user.
+   Enter any email (it doesn't need to be real, e.g. team@yourapp.local)
+   and choose the password you want to use to get into the portal.
+   Check "Auto Confirm User" so it's usable immediately.
+8. Back in config.js, set SHARED_LOGIN_EMAIL to the exact email you used
+   in step 7:
+
+     const SHARED_LOGIN_EMAIL = "team@yourapp.local";
+
+That's it — the portal is now wired to your database, and the login
+screen will accept the password you chose in step 7.
 
 
 RUNNING IT LOCALLY
@@ -61,11 +79,18 @@ then open http://localhost:8000 in your browser.
 (Or, if you have Node: npx serve)
 
 
-USING THE APP
----------------
-- On open, you'll see a grid of all projects. Click "+ New Project" to
-  create one (title + description, problem statement and placement are
-  optional).
+USING THE PORTAL
+------------------
+- On open, you'll be asked for the shared password. Log in once per
+  browser — the session persists until you click "Log out".
+- After logging in, you'll see a grid of tool cards. Click one to open it.
+- Every tool has a "Tools Menu" link to come back here.
+
+
+USING THE WIDGET SCENARIO SPECS TOOL
+----------------------------------------
+- You'll see a grid of projects. Click "+ New Project" to create one
+  (title + description, problem statement and placement are optional).
 - Click a project card to open it. Inside a project:
   - "+ Add Category" in the sidebar groups related scenarios
     (e.g. "Time Selection", "Edge Cases").
@@ -80,42 +105,66 @@ USING THE APP
     actual printer, then email the resulting file. Screenshots are
     included; videos are noted by name but can't be embedded in a PDF.
   - "Share" (top of sidebar) copies a link that opens the project in
-    read-only view — only useful once this app is deployed somewhere
-    reachable by whoever you send it to (see below). If that's not an
-    option for you, use "Download PDF" instead.
+    read-only view, no login needed — only useful once this app is
+    deployed somewhere reachable by whoever you send it to (see below).
+    If that's not an option for you, use "Download PDF" instead.
   - "Edit" / "Delete" on the project, and the delete controls on
     categories/scenarios/media, let you manage content as it evolves.
+
+
+ADDING A NEW TOOL
+-------------------
+1. Create a new folder: tools/<your-tool-slug>/
+2. Build it as its own self-contained index.html/app.js/style.css inside
+   that folder, same pattern as tools/widget-scenario-spec/:
+   - Link ../../theme.css before your own style.css to inherit the
+     shared look (buttons, forms, modal, toast).
+   - Load ../../config.js for Supabase access.
+   - On load, check `await sb.auth.getSession()`; if there's no session,
+     redirect to `../../index.html` so the portal login gates it too
+     (skip this check for any read-only/share-link mode you add).
+   - Add a "Tools Menu" link back to ../../index.html.
+3. If your tool needs its own database tables, add them to
+   supabase-schema.sql (or a new .sql file) following the same
+   public-read / authenticated-write policy pattern, and re-run it in
+   the Supabase SQL Editor.
+4. Register it in portal.js by adding an entry to the TOOLS array:
+
+     { name: 'Your Tool Name', description: '...', icon: '🛠️',
+       href: 'tools/your-tool-slug/index.html' }
+
+That's the whole integration — no other files need to change.
 
 
 SHARING WITHOUT DEPLOYING (Vercel/GitHub not available to you)
 ------------------------------------------------------------------
 If you can't install Git/Node or use Vercel/GitHub (e.g. restricted
 work machine), you don't need them. Run the app locally
-(see "RUNNING IT LOCALLY" above), open the project, and click
-"Download PDF" — that produces a normal PDF file you can send by email
-like any other document. The database still lives in Supabase, so you
-can keep editing and re-export an updated PDF any time.
+(see "RUNNING IT LOCALLY" above), open a project in the Widget Scenario
+Specs tool, and click "Download PDF" — that produces a normal PDF file
+you can send by email like any other document. The database still lives
+in Supabase, so you can keep editing and re-export an updated PDF any
+time.
 
 
 DEPLOYING TO VERCEL (optional — only if you want a live shareable link)
 ---------------------------------------------------------------------------
 1. Install Vercel CLI once:  npm i -g vercel
-2. Make sure config.js has your real Supabase URL/key filled in
-   (see setup steps above) — Vercel just serves these static files,
+2. Make sure config.js has your real Supabase URL/key/login email filled
+   in (see setup steps above) — Vercel just serves these static files,
    Supabase is the backend.
 3. From this folder, run:    vercel
 4. Follow the prompts (first time it'll ask to log in / link a project).
-5. You'll get a shareable URL. Open it, go into a project, click
-   "Share", and send that per-project link.
+5. You'll get a shareable URL. Log in, open a project, click "Share",
+   and send that per-project link.
 
 Since the data lives in Supabase (not in files), you generally don't
 need to redeploy after adding projects/scenarios/media — only redeploy
-if you change index.html, app.js, style.css, or config.js.
+if you change any of the .html/.js/.css files.
 
 
 LEGACY FILES
 -------------
-scenarios.json and any images/ folder from the old single-project,
-hand-edited version of this tool are no longer read by the app. You can
-delete them once you've recreated that content as a project in the app,
-or keep them around for reference.
+tools/widget-scenario-spec/scenarios.json is left over from the original
+single-project, hand-edited version of this tool and is no longer read
+by the app. Delete it whenever you like, or keep it for reference.

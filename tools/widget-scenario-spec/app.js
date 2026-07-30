@@ -14,7 +14,20 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL.includes('YOUR_SUPABASE'
     '(see README.txt for step-by-step setup).</div>';
 } else {
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  init();
+  boot();
+}
+
+async function boot() {
+  if (viewOnly) {
+    init();
+    return;
+  }
+  const { data } = await sb.auth.getSession();
+  if (data.session) {
+    init();
+  } else {
+    location.href = '../../index.html';
+  }
 }
 
 async function init() {
