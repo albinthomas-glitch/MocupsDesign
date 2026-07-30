@@ -22,8 +22,8 @@ const SHARED_LOGIN_EMAIL = "testop99QA@gmail.com";
 //   - Anyone who can view this file's contents (i.e. anyone logged into
 //     this portal) can use this token, so trust here = trust in the portal
 //     login, same as everything else in this app.
-const GITHUB_TOKEN = "YOUR_GITHUB_FINE_GRAINED_TOKEN";
-const GITHUB_OWNER = "YOUR_GITHUB_USERNAME";
-const GITHUB_REPO = "YOUR_REPO_NAME";
+const GITHUB_TOKEN = "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";
+const GITHUB_OWNER = "albinthomas-glitch";
+const GITHUB_REPO = "MocupsDesign-";
 const GITHUB_BRANCH = "main";
 const GITHUB_SNIPPETS_PATH = "snippets";
