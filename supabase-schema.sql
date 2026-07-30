@@ -64,21 +64,34 @@ create table if not exists scenarios (
   name text not null,
   trigger_text text,
   message text,
+  message_code text,
   popup text,
+  popup_code text,
   backend text,
+  mockup_code text,
   sort_order int not null default 0,
   created_at timestamptz not null default now()
 );
+-- Adds the *_code columns for scenarios tables created before this update.
+alter table scenarios add column if not exists message_code text;
+alter table scenarios add column if not exists popup_code text;
+alter table scenarios add column if not exists mockup_code text;
 
 create table if not exists media (
   id uuid primary key default gen_random_uuid(),
   scenario_id uuid not null references scenarios(id) on delete cascade,
   storage_path text not null,
   media_type text not null check (media_type in ('image','video')),
+  section text not null default 'mockup',
   caption text,
   sort_order int not null default 0,
   created_at timestamptz not null default now()
 );
+-- Adds the section column (which block a file belongs to) for media
+-- tables created before this update.
+alter table media add column if not exists section text not null default 'mockup';
+alter table media drop constraint if exists media_section_check;
+alter table media add constraint media_section_check check (section in ('mockup', 'message', 'popup'));
 
 alter table projects enable row level security;
 alter table categories enable row level security;

@@ -260,17 +260,22 @@ function renderScenario(id) {
 
     <div class="block">
       <div class="block-label">Mockups / Screenshots / Video</div>
-      <div class="media-grid" id="media-grid"></div>
+      <div class="media-grid" id="media-grid-mockup"></div>
+      ${renderCodeBlock('mockup', sc.mockup_code)}
     </div>
 
     <div class="block">
       <div class="block-label">Message Sent</div>
       <div class="block-body">${escapeHtml(sc.message || '—')}</div>
+      <div class="media-grid" id="media-grid-message"></div>
+      ${renderCodeBlock('message', sc.message_code)}
     </div>
 
     <div class="block">
       <div class="block-label">Popup Shown</div>
       <div class="block-body">${escapeHtml(sc.popup || '—')}</div>
+      <div class="media-grid" id="media-grid-popup"></div>
+      ${renderCodeBlock('popup', sc.popup_code)}
     </div>
 
     <div class="block backend">
@@ -279,7 +284,12 @@ function renderScenario(id) {
     </div>
   `;
 
-  renderMedia(sc);
+  renderMediaSection(sc, 'mockup', 'media-grid-mockup');
+  renderMediaSection(sc, 'message', 'media-grid-message');
+  renderMediaSection(sc, 'popup', 'media-grid-popup');
+  wireCodeBlock('mockup');
+  wireCodeBlock('message');
+  wireCodeBlock('popup');
 
   if (!viewOnly) {
     detail.querySelector('#edit-sc-btn').onclick = () => openScenarioModal(sc.category_id, sc);
@@ -287,11 +297,12 @@ function renderScenario(id) {
   }
 }
 
-function renderMedia(sc) {
-  const grid = document.getElementById('media-grid');
+function renderMediaSection(sc, section, gridId) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
   grid.innerHTML = '';
 
-  sc.media.forEach(m => {
+  sc.media.filter(m => m.section === section).forEach(m => {
     const { data } = sb.storage.from('media').getPublicUrl(m.storage_path);
     const url = data.publicUrl;
     const item = document.createElement('div');
@@ -316,10 +327,50 @@ function renderMedia(sc) {
     add.innerHTML = '+ Add screenshot or video<input type="file" accept="image/*,video/*">';
     add.querySelector('input').addEventListener('change', (e) => {
       const file = e.target.files[0];
-      if (file) uploadMedia(sc.id, file);
+      if (file) uploadMedia(sc.id, file, section);
     });
     grid.appendChild(add);
   }
+}
+
+/* ---------------- code blocks (code + sandboxed live preview) ---------------- */
+
+function renderCodeBlock(section, code) {
+  if (!code) return '';
+  return `
+    <div class="code-block" data-section="${section}">
+      <div class="code-tabs">
+        <button type="button" class="code-tab active" data-mode="code">Code</button>
+        <button type="button" class="code-tab" data-mode="preview">Preview</button>
+      </div>
+      <pre class="code-view"><code>${escapeHtml(code)}</code></pre>
+      <iframe class="code-preview-frame" style="display:none;" sandbox="allow-scripts"></iframe>
+    </div>
+  `;
+}
+
+function wireCodeBlock(section) {
+  const block = document.querySelector(`.code-block[data-section="${section}"]`);
+  if (!block) return;
+
+  const codeView = block.querySelector('.code-view');
+  const frame = block.querySelector('.code-preview-frame');
+  const rawCode = codeView.textContent;
+
+  block.querySelectorAll('.code-tab').forEach(tab => {
+    tab.onclick = () => {
+      block.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      if (tab.dataset.mode === 'preview') {
+        codeView.style.display = 'none';
+        frame.style.display = 'block';
+        frame.srcdoc = rawCode;
+      } else {
+        codeView.style.display = 'block';
+        frame.style.display = 'none';
+      }
+    };
+  });
 }
 
 /* ---------------- project CRUD ---------------- */
@@ -387,6 +438,27 @@ function buildPrintHtml() {
     html += `<div class="print-block"><h4>Placement</h4><p>${escapeHtml(p.placement_page || '')} — ${escapeHtml(p.placement_position || '')}</p></div>`;
   }
 
+  const printSection = (label, text, code, media) => {
+    let out = label ? `<p><strong>${label}:</strong> ${escapeHtml(text || '—')}</p>` : '';
+    const images = media.filter(m => m.media_type === 'image');
+    const videos = media.filter(m => m.media_type === 'video');
+    if (images.length) {
+      out += '<div class="print-media">';
+      images.forEach(m => {
+        const { data } = sb.storage.from('media').getPublicUrl(m.storage_path);
+        out += `<img src="${data.publicUrl}">`;
+      });
+      out += '</div>';
+    }
+    if (videos.length) {
+      out += `<p class="print-video-note">🎥 ${videos.length} video(s) attached — not shown in the PDF, view them in the app.</p>`;
+    }
+    if (code) {
+      out += `<pre class="print-code"><code>${escapeHtml(code)}</code></pre>`;
+    }
+    return out;
+  };
+
   p.categories.forEach(cat => {
     html += `<h2 class="print-cat">${escapeHtml(cat.name)}</h2>`;
     cat.scenarios.forEach(sc => {
@@ -394,22 +466,13 @@ function buildPrintHtml() {
       html += `<h3>${escapeHtml(sc.name)}</h3>`;
       if (sc.trigger_text) html += `<p><strong>Trigger:</strong> ${escapeHtml(sc.trigger_text)}</p>`;
 
-      const images = sc.media.filter(m => m.media_type === 'image');
-      const videos = sc.media.filter(m => m.media_type === 'video');
-      if (images.length) {
-        html += '<div class="print-media">';
-        images.forEach(m => {
-          const { data } = sb.storage.from('media').getPublicUrl(m.storage_path);
-          html += `<img src="${data.publicUrl}">`;
-        });
-        html += '</div>';
+      const mockupMedia = sc.media.filter(m => m.section === 'mockup');
+      if (mockupMedia.length || sc.mockup_code) {
+        html += '<p><strong>Mockups</strong></p>';
+        html += printSection('', '', sc.mockup_code, mockupMedia);
       }
-      if (videos.length) {
-        html += `<p class="print-video-note">🎥 ${videos.length} video mockup(s) attached to this scenario — not shown in the PDF, view them in the app.</p>`;
-      }
-
-      html += `<p><strong>Message Sent:</strong> ${escapeHtml(sc.message || '—')}</p>`;
-      html += `<p><strong>Popup Shown:</strong> ${escapeHtml(sc.popup || '—')}</p>`;
+      html += printSection('Message Sent', sc.message, sc.message_code, sc.media.filter(m => m.section === 'message'));
+      html += printSection('Popup Shown', sc.popup, sc.popup_code, sc.media.filter(m => m.section === 'popup'));
       html += `<p><strong>Backend:</strong> ${escapeHtml(sc.backend || '—')}</p>`;
       html += '</div>';
     });
@@ -482,8 +545,11 @@ function openScenarioModal(categoryId, existing) {
     <h3>${isEdit ? 'Edit Scenario' : 'New Scenario'}</h3>
     <div class="field"><label>Scenario name</label><input type="text" id="f-name" value="${isEdit ? escapeHtml(existing.name) : ''}" placeholder="e.g. Default Time Selected"></div>
     <div class="field"><label>Trigger</label><textarea id="f-trigger" placeholder="When does this happen?">${isEdit ? escapeHtml(existing.trigger_text || '') : ''}</textarea></div>
+    <div class="field"><label>Mockup code (optional)</label><textarea id="f-mockup-code" class="code-input" placeholder="HTML/CSS/JS for the mockup, if useful alongside the screenshots">${isEdit ? escapeHtml(existing.mockup_code || '') : ''}</textarea></div>
     <div class="field"><label>Message sent</label><textarea id="f-message" placeholder="Exact message text, or 'None sent.'">${isEdit ? escapeHtml(existing.message || '') : ''}</textarea></div>
+    <div class="field"><label>Message code (optional)</label><textarea id="f-message-code" class="code-input" placeholder="HTML/template code for this message">${isEdit ? escapeHtml(existing.message_code || '') : ''}</textarea></div>
     <div class="field"><label>Popup shown</label><textarea id="f-popup" placeholder="Exact popup copy, or 'None.'">${isEdit ? escapeHtml(existing.popup || '') : ''}</textarea></div>
+    <div class="field"><label>Popup code (optional)</label><textarea id="f-popup-code" class="code-input" placeholder="HTML/CSS/JS for this popup">${isEdit ? escapeHtml(existing.popup_code || '') : ''}</textarea></div>
     <div class="field"><label>Backend behavior</label><textarea id="f-backend" placeholder="What happens on the backend">${isEdit ? escapeHtml(existing.backend || '') : ''}</textarea></div>
     <div class="form-actions">
       <button class="btn" id="f-cancel">Cancel</button>
@@ -497,8 +563,11 @@ function openScenarioModal(categoryId, existing) {
       const payload = {
         name,
         trigger_text: box.querySelector('#f-trigger').value.trim(),
+        mockup_code: box.querySelector('#f-mockup-code').value.trim(),
         message: box.querySelector('#f-message').value.trim(),
+        message_code: box.querySelector('#f-message-code').value.trim(),
         popup: box.querySelector('#f-popup').value.trim(),
+        popup_code: box.querySelector('#f-popup-code').value.trim(),
         backend: box.querySelector('#f-backend').value.trim(),
       };
       let error;
@@ -529,7 +598,7 @@ async function deleteScenario(id) {
 
 /* ---------------- media ---------------- */
 
-async function uploadMedia(scenarioId, file) {
+async function uploadMedia(scenarioId, file, section) {
   const isVideo = file.type.startsWith('video/');
   const path = `${scenarioId}/${crypto.randomUUID()}-${file.name}`;
 
@@ -542,7 +611,8 @@ async function uploadMedia(scenarioId, file) {
     scenario_id: scenarioId,
     storage_path: path,
     media_type: isVideo ? 'video' : 'image',
-    sort_order: sc ? sc.media.length : 0,
+    section,
+    sort_order: sc ? sc.media.filter(m => m.section === section).length : 0,
   });
   if (error) { toast('Could not save media: ' + error.message); return; }
 
