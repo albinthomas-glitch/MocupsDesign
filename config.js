@@ -24,6 +24,6 @@ const SHARED_LOGIN_EMAIL = "testop99QA@gmail.com";
 //     login, same as everything else in this app.
 const GITHUB_TOKEN = "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";
 const GITHUB_OWNER = "albinthomas-glitch";
-const GITHUB_REPO = "MocupsDesign-";
+const GITHUB_REPO = "MocupsDesign";
 const GITHUB_BRANCH = "main";
 const GITHUB_SNIPPETS_PATH = "snippets";
