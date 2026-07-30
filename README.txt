@@ -4,11 +4,14 @@ TOOLS PORTAL — HOW TO USE
 WHAT THIS IS NOW
 -----------------
 This is a password-protected portal that can hold multiple, unrelated
-tools. Open it, log in once, and you land on a menu of tool cards. Right
-now there's one: "Widget Scenario Specs" (documents widget/feature UX
-scenarios — trigger / message / popup / backend — for manager review,
-with screenshots or short videos, PDF export, and share links). You can
-add more tools later; see "ADDING A NEW TOOL" below.
+tools. Open it, log in once, and you land on a menu of tool cards. There
+are two so far:
+  - "Widget Scenario Specs" (documents widget/feature UX scenarios —
+    trigger / message / popup / backend — for manager review, with
+    screenshots or short videos, PDF export, and share links).
+  - "Code Store" (paste code, preview it with syntax highlighting, and
+    save it as a file in a GitHub repo instead of Supabase).
+You can add more tools later; see "ADDING A NEW TOOL" below.
 
 Layout:
   index.html, portal.js, portal.css   -> the portal itself (login + menu)
@@ -16,10 +19,13 @@ Layout:
                                           modal/toast/login styling, used by
                                           the portal and every tool
   config.js                           -> your Supabase project URL/key +
-                                          shared login email (one config
-                                          for the whole portal and all tools)
+                                          shared login email + GitHub token
+                                          for Code Store (one config for the
+                                          whole portal and all tools)
   supabase-schema.sql                 -> database setup script
-  tools/widget-scenario-spec/         -> the first tool, self-contained
+  tools/widget-scenario-spec/         -> Widget Scenario Specs, self-contained
+                                          (index.html, app.js, style.css)
+  tools/code-store/                   -> Code Store, self-contained
                                           (index.html, app.js, style.css)
 
 Data lives in a free Supabase project (Postgres database + file storage),
@@ -110,6 +116,55 @@ USING THE WIDGET SCENARIO SPECS TOOL
     If that's not an option for you, use "Download PDF" instead.
   - "Edit" / "Delete" on the project, and the delete controls on
     categories/scenarios/media, let you manage content as it evolves.
+
+
+ONE-TIME SETUP: CODE STORE (GitHub instead of Supabase)
+-----------------------------------------------------------
+Code Store keeps snippets as plain files in a GitHub repo rather than in
+Supabase, so it needs its own credentials in config.js:
+
+1. Pick (or create) a GitHub repo to hold snippets. A private repo
+   dedicated to this is recommended over reusing an existing project repo.
+2. Create a fine-grained personal access token:
+   github.com/settings/tokens?type=beta -> "Generate new token"
+   - Under "Repository access", select "Only select repositories" and
+     pick the one repo from step 1. Do NOT grant access to all repos.
+   - Under "Permissions" -> "Repository permissions", set
+     "Contents" to "Read and write". Leave everything else as "No access".
+   - Generate the token and copy it (GitHub only shows it once).
+3. Open config.js and fill in:
+
+     const GITHUB_TOKEN = "github_pat_...";
+     const GITHUB_OWNER = "your-github-username";
+     const GITHUB_REPO = "your-repo-name";
+     const GITHUB_BRANCH = "main";
+     const GITHUB_SNIPPETS_PATH = "snippets";
+
+IMPORTANT: unlike the Supabase anon key, this token is not safe-by-design
+— it's shipped to the browser because this is a static site with no
+server, and it grants read/write on whatever repo you scoped it to.
+Scoping it to one dedicated repo with only "Contents" access (as above)
+limits what someone could do with it if config.js ever leaked. Anyone who
+can log into this portal can use this token, same trust level as
+everything else here.
+
+The "snippets" folder in GITHUB_SNIPPETS_PATH doesn't need to exist ahead
+of time — GitHub creates it automatically the first time a snippet is
+saved.
+
+
+USING THE CODE STORE TOOL
+-----------------------------
+- You'll see a grid of saved snippets. Click "+ New Snippet" to add one:
+  give it a filename (e.g. main.py, helper.js) and paste the code.
+- Click a snippet to preview it with syntax highlighting (auto-detected
+  from the code, via highlight.js).
+- "Copy" copies the raw code to your clipboard.
+- "Edit" lets you change the filename and/or code; saving commits the
+  change to the GitHub repo (renaming deletes the old file and adds the
+  new one). "Delete" removes the file from the repo.
+- Every save/delete is a real commit to your GitHub repo, so full history
+  is available there if you ever want to see prior versions.
 
 
 ADDING A NEW TOOL
