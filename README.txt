@@ -131,29 +131,35 @@ already show up on the portal menu.
     via highlight.js).
   - "Preview" — for HTML/CSS/JS snippets, renders the code as an actual
     live page in a sandboxed frame (the previewed code can't reach or
-    affect the portal itself, even if it has its own scripts). Clicking
-    never triggers the page's own behavior (no navigation, no menus
-    opening, nothing) — every click is only ever a selection. Click any
-    element/section to outline its box and leave a remark about it —
-    useful for marking things to fix later. This is read-only review
-    only: there's no way to edit the code from this tab.
+    affect the portal itself, even if it has its own scripts). The page
+    is fully interactive by default — buttons, links, and any JS-driven
+    UI behave like the real thing, same as clicking around an actual
+    mockup. To leave a remark instead, click "+ Add Remark" above the
+    preview first — it arms one click (the button changes to "Cancel"
+    and the frame gets a dashed outline as a reminder); your next click
+    in the preview is captured instead of reaching the page, and the
+    frame goes back to being interactive right after. This is read-only
+    review of the code itself: there's no way to edit the code from
+    this tab, only interact with it and mark it up.
     Remarks are saved per snippet (in the "snippet_comments" table) and
     are still there next time you open it, drawn as an outlined box in
     the same spot. Click an existing box (or its entry in the list below
-    the preview) to edit it, mark it "done", or delete it. A remark's
-    position/size is stored as a percentage of the page, not tied to the
-    exact element, so it stays roughly in place even after you go edit
-    the code — a big layout change can still leave a box looking
-    slightly off.
+    the preview) to edit it, mark it "done", or delete it — clicking an
+    existing box always opens it, with no need to arm anything first. A
+    remark's position/size is stored as a percentage of the page, not
+    tied to the exact element, so it stays roughly in place even after
+    you go edit the code — a big layout change can still leave a box
+    looking slightly off.
 - "Copy" copies the raw code to your clipboard.
 - "Share" copies a link that opens this snippet in read-only view, no
   login needed — useful for sending to someone (e.g. a backend developer)
   to review the code and remarks without giving them portal access. In
   this view: the Code/Preview tabs and existing remarks are all visible,
-  but "Edit", "Delete", and "Share" are hidden, and clicking the preview
-  no longer lets you add new remarks or edit/delete/resolve existing ones
-  — it's look-only, same read-only spirit as Widget Scenario Specs'
-  Share links.
+  and the preview is still interactive (clicking around the mockup still
+  works), but "Edit", "Delete", "Share", and "+ Add Remark" are hidden,
+  and clicking an existing remark's box only lets you view it, not
+  edit/delete/resolve it — same read-only spirit as Widget Scenario
+  Specs' Share links.
 - "Edit" lets you change the filename and/or code; saving updates the row
   in Supabase. "Delete" removes the snippet and any remarks on it.
 

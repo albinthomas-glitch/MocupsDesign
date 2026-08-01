@@ -7,6 +7,7 @@ let snippets = [];        // list from Supabase (id, filename, code, ...)
 let currentSnippet = null; // { id, filename, code, created_at, updated_at }
 let comments = [];         // review remarks pinned on the current snippet's preview
 let activeTab = 'code';    // 'code' | 'preview'
+let armed = false;         // true while "+ Add Remark" is waiting for the next preview click
 
 const configured = SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes('YOUR_SUPABASE');
 
@@ -187,6 +188,7 @@ function showCodeTab() {
   document.getElementById('code-view').style.display = 'block';
   document.getElementById('preview-view').style.display = 'none';
   closeCommentPopover();
+  setArmed(false);
 }
 
 function showPreviewTab() {
@@ -202,28 +204,38 @@ function showPreviewTab() {
    The previewed code renders in a sandboxed iframe (allow-scripts only,
    no allow-same-origin) so it stays fully isolated from the portal --
    it can't reach this page's DOM or JS state. A small script is injected
-   into the previewed HTML itself, which reports its own height and
-   selected-element boxes back via postMessage (which sandboxed iframes
-   are explicitly allowed to send regardless of the sandbox restrictions).
+   into the previewed HTML itself, which reports its own height back via
+   postMessage (which sandboxed iframes are explicitly allowed to send
+   regardless of the sandbox restrictions).
 
-   Every click is captured and stopped before it reaches the page's own
-   elements (stopPropagation in the capture phase, plus preventDefault),
-   so the previewed site never actually responds to clicks -- no
-   navigation, no menus opening, nothing -- clicking only ever selects
-   that element's box for commenting. */
+   The preview is interactive by default -- clicks reach the page's own
+   elements normally (buttons, links, JS-driven UI all behave like the
+   real thing), same as an actual mockup would. To leave a remark, the
+   user arms it with the "+ Add Remark" button first; only then does the
+   *next* click get intercepted (preventDefault/stopPropagation) and
+   reported back as a selected element/box, after which it disarms
+   itself automatically so the page goes back to being interactive. */
 
 function renderPreviewFrame() {
   const frame = document.getElementById('preview-frame');
   const injected = `
 <script>
 (function () {
+  var armed = false;
   function reportSize() {
     parent.postMessage({ source: 'code-store-preview', type: 'resize', height: document.documentElement.scrollHeight }, '*');
   }
   window.addEventListener('load', reportSize);
   window.addEventListener('resize', reportSize);
   setTimeout(reportSize, 50);
+  window.addEventListener('message', function (e) {
+    if (!e.data || e.data.source !== 'code-store-parent') return;
+    if (e.data.type === 'arm') armed = true;
+    else if (e.data.type === 'disarm') armed = false;
+  });
   document.addEventListener('click', function (e) {
+    if (!armed) return;
+    armed = false;
     e.preventDefault();
     e.stopPropagation();
     var el = e.target;
@@ -250,6 +262,7 @@ function renderPreviewFrame() {
 })();
 <\/script>`;
   closeCommentPopover();
+  setArmed(false);
   frame.srcdoc = (currentSnippet.code || '') + injected;
 }
 
@@ -261,9 +274,28 @@ window.addEventListener('message', (e) => {
   if (e.data.type === 'resize') {
     frame.style.height = Math.max(e.data.height, 80) + 'px';
   } else if (e.data.type === 'select' && !viewOnly) {
+    setArmed(false);
     openNewCommentPopover(e.data.xPercent, e.data.yPercent, e.data.widthPercent, e.data.heightPercent, e.data.label);
   }
 });
+
+function setArmed(next) {
+  armed = next;
+  const btn = document.getElementById('add-remark-btn');
+  const hint = document.getElementById('armed-hint');
+  const box = document.getElementById('preview-frame-box');
+  if (btn) btn.textContent = armed ? 'Cancel' : '+ Add Remark';
+  if (hint) hint.style.display = armed ? '' : 'none';
+  if (box) box.classList.toggle('armed', armed);
+}
+
+function toggleArmRemark() {
+  setArmed(!armed);
+  const frame = document.getElementById('preview-frame');
+  if (frame.contentWindow) {
+    frame.contentWindow.postMessage({ source: 'code-store-parent', type: armed ? 'arm' : 'disarm' }, '*');
+  }
+}
 
 async function loadComments() {
   const { data, error } = await sb.from('snippet_comments')
@@ -458,7 +490,11 @@ function wireStaticButtons() {
   if (byId('edit-cancel')) byId('edit-cancel').onclick = exitEditMode;
   if (byId('edit-save')) byId('edit-save').onclick = saveEdit;
   if (byId('delete-btn')) byId('delete-btn').onclick = deleteCurrentSnippet;
+  if (byId('add-remark-btn')) byId('add-remark-btn').onclick = toggleArmRemark;
   document.querySelectorAll('.view-tab').forEach(t => {
     t.onclick = () => { t.dataset.mode === 'preview' ? showPreviewTab() : showCodeTab(); };
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && armed) toggleArmRemark();
   });
 }

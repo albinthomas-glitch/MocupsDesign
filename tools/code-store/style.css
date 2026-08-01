@@ -89,12 +89,20 @@
 .view-tab.active { color: var(--ink); background: var(--panel); }
 
 /* ---------- preview + section remarks ---------- */
+#preview-toolbar { align-items: center; margin-bottom: 8px; }
+#armed-hint { font-size: 12.5px; color: var(--accent); font-weight: 600; }
+
 #preview-frame-box {
   position: relative;
   border: 1px solid var(--line);
   border-radius: 10px;
   overflow: hidden;
   background: #fff;
+}
+#preview-frame-box.armed {
+  border-color: var(--accent);
+  outline: 2px dashed var(--accent);
+  outline-offset: -1px;
 }
 #preview-frame { display: block; width: 100%; min-height: 200px; border: none; }
 #pin-layer { position: absolute; inset: 0; pointer-events: none; }
