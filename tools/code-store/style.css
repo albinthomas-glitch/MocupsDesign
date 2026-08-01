@@ -89,7 +89,7 @@
 .view-tab.active { color: var(--ink); background: var(--panel); }
 
 /* ---------- preview + section remarks ---------- */
-#preview-toolbar { align-items: center; margin-bottom: 8px; }
+#preview-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 #armed-hint { font-size: 12.5px; color: var(--accent); font-weight: 600; }
 
 #preview-frame-box {

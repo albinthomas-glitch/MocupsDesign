@@ -151,15 +151,22 @@ already show up on the portal menu.
     you go edit the code — a big layout change can still leave a box
     looking slightly off.
 - "Copy" copies the raw code to your clipboard.
-- "Share" copies a link that opens this snippet in read-only view, no
+- "Share" copies a link that opens this snippet in a scoped-down view, no
   login needed — useful for sending to someone (e.g. a backend developer)
-  to review the code and remarks without giving them portal access. In
-  this view: the Code/Preview tabs and existing remarks are all visible,
-  and the preview is still interactive (clicking around the mockup still
-  works), but "Edit", "Delete", "Share", and "+ Add Remark" are hidden,
-  and clicking an existing remark's box only lets you view it, not
-  edit/delete/resolve it — same read-only spirit as Widget Scenario
-  Specs' Share links.
+  to review and comment on the interactive mockup without giving them
+  portal access or the raw source. In this view: only the Preview tab is
+  reachable (the Code tab and "Copy" are hidden — the file's raw source
+  isn't handed over just to collect feedback), the preview is fully
+  interactive, and "+ Add Remark" is available, so the recipient can add
+  new remarks without logging in. "Edit", "Delete", and "Share" for the
+  snippet itself stay hidden, and clicking an *existing* remark's box
+  only lets you view it, not edit/delete/resolve it — adding new remarks
+  is the one write action a share link can do.
+  (Note: hiding the Code tab only removes the UI affordance — the
+  snippet's code is still public-read in Supabase, the same as it has to
+  be for the live preview to render at all, so this isn't a real access
+  boundary against a determined recipient with browser dev tools, just a
+  normal-use convenience.)
 - "Edit" lets you change the filename and/or code; saving updates the row
   in Supabase. "Delete" removes the snippet and any remarks on it.
 

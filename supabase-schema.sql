@@ -184,12 +184,17 @@ create policy "authenticated delete" on snippets for delete using (auth.role() =
 
 alter table snippet_comments enable row level security;
 
+-- Unlike every other table, comment INSERT is public (not authenticated-only):
+-- share links (?mode=view) let anyone with the link leave a remark without
+-- logging in, since that's the point of sending someone a review link.
+-- Editing/deleting/resolving existing remarks still requires login.
 drop policy if exists "public read" on snippet_comments;
 drop policy if exists "authenticated insert" on snippet_comments;
+drop policy if exists "public insert" on snippet_comments;
 drop policy if exists "authenticated update" on snippet_comments;
 drop policy if exists "authenticated delete" on snippet_comments;
 create policy "public read" on snippet_comments for select using (true);
-create policy "authenticated insert" on snippet_comments for insert with check (auth.role() = 'authenticated');
+create policy "public insert" on snippet_comments for insert with check (true);
 create policy "authenticated update" on snippet_comments for update using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 create policy "authenticated delete" on snippet_comments for delete using (auth.role() = 'authenticated');
 

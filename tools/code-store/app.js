@@ -57,6 +57,18 @@ function showDetailView() {
   document.querySelectorAll('.owner-controls').forEach(el => {
     el.style.display = viewOnly ? 'none' : 'flex';
   });
+  if (viewOnly) {
+    // Share links show the interactive Preview only -- no Code tab, no
+    // Copy button -- so the raw source isn't handed over just for leaving
+    // a remark. (This only hides the UI affordance: the code itself is
+    // still public-read in Supabase, same as it has to be for the live
+    // preview to render at all -- see README's security notes.)
+    activeTab = 'preview';
+    const codeTabBtn = document.querySelector('.view-tab[data-mode="code"]');
+    if (codeTabBtn) codeTabBtn.style.display = 'none';
+    const copyBtn = document.getElementById('copy-btn');
+    if (copyBtn) copyBtn.style.display = 'none';
+  }
 }
 
 function escapeHtml(str) {
@@ -159,10 +171,12 @@ async function loadSnippet(id) {
 function renderSnippet() {
   const s = currentSnippet;
   document.getElementById('snippet-name').textContent = s.filename;
-  const codeView = document.getElementById('code-view-inner');
-  codeView.textContent = s.code;
-  codeView.className = '';
-  hljs.highlightElement(codeView);
+  if (!viewOnly) {
+    const codeView = document.getElementById('code-view-inner');
+    codeView.textContent = s.code;
+    codeView.className = '';
+    hljs.highlightElement(codeView);
+  }
   document.getElementById('edit-view').style.display = 'none';
   if (activeTab === 'preview') showPreviewTab(); else showCodeTab();
 }
@@ -273,7 +287,7 @@ window.addEventListener('message', (e) => {
 
   if (e.data.type === 'resize') {
     frame.style.height = Math.max(e.data.height, 80) + 'px';
-  } else if (e.data.type === 'select' && !viewOnly) {
+  } else if (e.data.type === 'select') {
     setArmed(false);
     openNewCommentPopover(e.data.xPercent, e.data.yPercent, e.data.widthPercent, e.data.heightPercent, e.data.label);
   }
@@ -334,9 +348,7 @@ function renderCommentList() {
   const list = document.getElementById('comment-list');
   list.innerHTML = '';
   if (!comments.length) {
-    list.innerHTML = viewOnly
-      ? '<div class="empty-state">No remarks on this snippet.</div>'
-      : '<div class="empty-state">No remarks yet. Click any element on the preview to leave one.</div>';
+    list.innerHTML = '<div class="empty-state">No remarks yet. Click "+ Add Remark" to leave one.</div>';
     return;
   }
   comments.forEach((c, i) => {
