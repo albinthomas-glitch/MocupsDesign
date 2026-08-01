@@ -126,11 +126,24 @@ that schema also seeds Code Store's menu card automatically, so it should
 already show up on the portal menu.
 - You'll see a grid of saved snippets. Click "+ New Snippet" to add one:
   give it a filename (e.g. main.py, helper.js) and paste the code.
-- Click a snippet to preview it with syntax highlighting (auto-detected
-  from the code, via highlight.js).
+- Click a snippet to open it. Two tabs:
+  - "Code" — syntax-highlighted read-only view (auto-detected language,
+    via highlight.js).
+  - "Preview" — for HTML/CSS/JS snippets, renders the code as an actual
+    live page in a sandboxed frame (the previewed code can't reach or
+    affect the portal itself, even if it has its own scripts). Click
+    anywhere on the rendered page to drop a numbered pin and leave a
+    remark about that spot — useful for marking things to fix later.
+    Pins and remarks are saved per snippet (in the "snippet_comments"
+    table) and are still there next time you open it. Click an existing
+    pin (or its entry in the list below the preview) to edit it, mark it
+    "done", or delete it. A remark's position is stored as a percentage
+    of the page, so it stays roughly in place even after you go edit the
+    code — it isn't tied to the exact element, so a big layout change can
+    still leave a pin looking slightly off.
 - "Copy" copies the raw code to your clipboard.
 - "Edit" lets you change the filename and/or code; saving updates the row
-  in Supabase. "Delete" removes it.
+  in Supabase. "Delete" removes the snippet and any remarks on it.
 
 
 ADDING A NEW TOOL

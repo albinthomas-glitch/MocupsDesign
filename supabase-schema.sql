@@ -151,6 +151,21 @@ create table if not exists snippets (
   updated_at timestamptz not null default now()
 );
 
+-- Review remarks pinned to a spot in a snippet's rendered preview (see
+-- "Preview" tab in Code Store). Positioned by percentage of the rendered
+-- page's width/height, not a DOM selector, so a pin stays roughly where
+-- you left it even after you go edit the code.
+create table if not exists snippet_comments (
+  id uuid primary key default gen_random_uuid(),
+  snippet_id uuid not null references snippets(id) on delete cascade,
+  x_percent numeric not null,
+  y_percent numeric not null,
+  label text,
+  comment text not null,
+  resolved boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
 alter table snippets enable row level security;
 
 drop policy if exists "public read" on snippets;
@@ -161,6 +176,17 @@ create policy "public read" on snippets for select using (true);
 create policy "authenticated insert" on snippets for insert with check (auth.role() = 'authenticated');
 create policy "authenticated update" on snippets for update using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 create policy "authenticated delete" on snippets for delete using (auth.role() = 'authenticated');
+
+alter table snippet_comments enable row level security;
+
+drop policy if exists "public read" on snippet_comments;
+drop policy if exists "authenticated insert" on snippet_comments;
+drop policy if exists "authenticated update" on snippet_comments;
+drop policy if exists "authenticated delete" on snippet_comments;
+create policy "public read" on snippet_comments for select using (true);
+create policy "authenticated insert" on snippet_comments for insert with check (auth.role() = 'authenticated');
+create policy "authenticated update" on snippet_comments for update using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "authenticated delete" on snippet_comments for delete using (auth.role() = 'authenticated');
 
 insert into tools (name, description, icon, href, sort_order)
 select 'Code Store',

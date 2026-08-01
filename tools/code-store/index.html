@@ -42,7 +42,21 @@
     </div>
   </header>
 
+  <div class="view-tabs">
+    <button type="button" class="view-tab active" data-mode="code">Code</button>
+    <button type="button" class="view-tab" data-mode="preview">Preview</button>
+  </div>
+
   <pre id="code-view"><code id="code-view-inner"></code></pre>
+
+  <div id="preview-view" style="display:none;">
+    <div id="preview-frame-box">
+      <iframe id="preview-frame" sandbox="allow-scripts"></iframe>
+      <div id="pin-layer"></div>
+      <div id="comment-popover" style="display:none;"></div>
+    </div>
+    <div id="comment-list"></div>
+  </div>
 
   <div id="edit-view" style="display:none;">
     <div class="field"><label>Filename</label><input type="text" id="edit-filename" placeholder="e.g. helper.js"></div>

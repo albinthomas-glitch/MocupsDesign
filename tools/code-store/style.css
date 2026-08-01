@@ -70,3 +70,106 @@
   font-size: 13px;
   min-height: 400px;
 }
+
+/* ---------- code / preview tabs ---------- */
+.view-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+.view-tab {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 16px;
+  border: 1px solid var(--line);
+  border-bottom: none;
+  background: var(--bg);
+  color: var(--ink-soft);
+  cursor: pointer;
+  border-radius: 7px 7px 0 0;
+}
+.view-tab.active { color: var(--ink); background: var(--panel); }
+
+/* ---------- preview + pinned remarks ---------- */
+#preview-frame-box {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+#preview-frame { display: block; width: 100%; min-height: 200px; border: none; }
+#pin-layer { position: absolute; inset: 0; pointer-events: none; }
+.pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  border: 2px solid #fff;
+}
+.pin.resolved { background: #8a8f98; }
+
+#comment-popover {
+  position: absolute;
+  width: 260px;
+  max-width: calc(100% - 24px);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  padding: 12px;
+  z-index: 10;
+}
+#comment-popover .c-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+  word-break: break-all;
+}
+#comment-popover textarea {
+  width: 100%;
+  min-height: 70px;
+  font: inherit;
+  font-size: 13px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 9px;
+  resize: vertical;
+}
+#comment-popover .popover-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+#comment-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.comment-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: pointer;
+  background: var(--panel);
+}
+.comment-item:hover { border-color: var(--accent); }
+.comment-item.resolved { opacity: 0.55; text-decoration: line-through; }
+.comment-item .c-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-bottom: 4px;
+  text-decoration: none;
+  display: block;
+}

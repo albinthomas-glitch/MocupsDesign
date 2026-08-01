@@ -4,6 +4,8 @@ const activeId = params.get('snippet');
 let sb;
 let snippets = [];        // list from Supabase (id, filename, code, ...)
 let currentSnippet = null; // { id, filename, code, created_at, updated_at }
+let comments = [];         // review remarks pinned on the current snippet's preview
+let activeTab = 'code';    // 'code' | 'preview'
 
 const configured = SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes('YOUR_SUPABASE');
 
@@ -152,19 +154,213 @@ function renderSnippet() {
   codeView.textContent = s.code;
   codeView.className = '';
   hljs.highlightElement(codeView);
-  exitEditMode();
+  document.getElementById('edit-view').style.display = 'none';
+  if (activeTab === 'preview') showPreviewTab(); else showCodeTab();
 }
 
 function enterEditMode() {
   document.getElementById('code-view').style.display = 'none';
+  document.getElementById('preview-view').style.display = 'none';
   document.getElementById('edit-view').style.display = 'block';
   document.getElementById('edit-filename').value = currentSnippet.filename;
   document.getElementById('edit-code').value = currentSnippet.code;
 }
 
 function exitEditMode() {
-  document.getElementById('code-view').style.display = 'block';
   document.getElementById('edit-view').style.display = 'none';
+  if (activeTab === 'preview') showPreviewTab(); else showCodeTab();
+}
+
+/* ---------------- code / preview tabs ---------------- */
+
+function showCodeTab() {
+  activeTab = 'code';
+  document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === 'code'));
+  document.getElementById('code-view').style.display = 'block';
+  document.getElementById('preview-view').style.display = 'none';
+  closeCommentPopover();
+}
+
+function showPreviewTab() {
+  activeTab = 'preview';
+  document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === 'preview'));
+  document.getElementById('code-view').style.display = 'none';
+  document.getElementById('preview-view').style.display = 'block';
+  renderPreviewFrame();
+  loadComments();
+}
+
+/* ---------------- live preview + pinned comments ----------------
+   The previewed code renders in a sandboxed iframe (allow-scripts only,
+   no allow-same-origin) so it stays fully isolated from the portal --
+   it can't reach this page's DOM or JS state. A small script is injected
+   into the previewed HTML itself, which reports its own height and click
+   positions back via postMessage, which sandboxed iframes are explicitly
+   allowed to send regardless of the sandbox restrictions. */
+
+function renderPreviewFrame() {
+  const frame = document.getElementById('preview-frame');
+  const injected = `
+<script>
+(function () {
+  function reportSize() {
+    parent.postMessage({ source: 'code-store-preview', type: 'resize', height: document.documentElement.scrollHeight }, '*');
+  }
+  window.addEventListener('load', reportSize);
+  window.addEventListener('resize', reportSize);
+  setTimeout(reportSize, 50);
+  document.addEventListener('click', function (e) {
+    var el = e.target;
+    var w = document.documentElement.scrollWidth || 1;
+    var h = document.documentElement.scrollHeight || 1;
+    var label = (el.tagName || 'element').toLowerCase();
+    if (el.id) label += '#' + el.id;
+    else if (el.className && typeof el.className === 'string' && el.className.trim()) {
+      label += '.' + el.className.trim().split(/\\s+/).join('.');
+    }
+    parent.postMessage({
+      source: 'code-store-preview',
+      type: 'click',
+      xPercent: (e.pageX / w) * 100,
+      yPercent: (e.pageY / h) * 100,
+      label: label,
+    }, '*');
+    e.preventDefault();
+  }, true);
+})();
+<\/script>`;
+  closeCommentPopover();
+  frame.srcdoc = (currentSnippet.code || '') + injected;
+}
+
+window.addEventListener('message', (e) => {
+  if (!e.data || e.data.source !== 'code-store-preview') return;
+  const frame = document.getElementById('preview-frame');
+  if (e.source !== frame.contentWindow) return;
+
+  if (e.data.type === 'resize') {
+    frame.style.height = Math.max(e.data.height, 80) + 'px';
+  } else if (e.data.type === 'click') {
+    openNewCommentPopover(e.data.xPercent, e.data.yPercent, e.data.label);
+  }
+});
+
+async function loadComments() {
+  const { data, error } = await sb.from('snippet_comments')
+    .select('*')
+    .eq('snippet_id', currentSnippet.id)
+    .order('created_at');
+  if (error) { toast('Could not load comments: ' + error.message); return; }
+  comments = data || [];
+  renderPins();
+  renderCommentList();
+}
+
+function renderPins() {
+  const layer = document.getElementById('pin-layer');
+  layer.innerHTML = '';
+  comments.forEach((c, i) => {
+    const pin = document.createElement('div');
+    pin.className = 'pin' + (c.resolved ? ' resolved' : '');
+    pin.style.left = c.x_percent + '%';
+    pin.style.top = c.y_percent + '%';
+    pin.textContent = c.resolved ? '✓' : String(i + 1);
+    pin.title = c.comment;
+    pin.onclick = (ev) => { ev.stopPropagation(); openExistingCommentPopover(c); };
+    layer.appendChild(pin);
+  });
+}
+
+function renderCommentList() {
+  const list = document.getElementById('comment-list');
+  list.innerHTML = '';
+  if (!comments.length) {
+    list.innerHTML = '<div class="empty-state">No remarks yet. Click anywhere on the preview to leave one.</div>';
+    return;
+  }
+  comments.forEach((c, i) => {
+    const item = document.createElement('div');
+    item.className = 'comment-item' + (c.resolved ? ' resolved' : '');
+    item.innerHTML = `<div class="c-label">#${i + 1} ${escapeHtml(c.label || '')}</div>${escapeHtml(c.comment)}`;
+    item.onclick = () => openExistingCommentPopover(c);
+    list.appendChild(item);
+  });
+}
+
+function closeCommentPopover() {
+  const pop = document.getElementById('comment-popover');
+  if (pop) pop.style.display = 'none';
+}
+
+function positionPopover(xPercent, yPercent) {
+  const pop = document.getElementById('comment-popover');
+  pop.style.left = Math.min(xPercent, 70) + '%';
+  pop.style.top = yPercent + '%';
+  pop.style.display = 'block';
+  return pop;
+}
+
+function openNewCommentPopover(xPercent, yPercent, label) {
+  const pop = positionPopover(xPercent, yPercent);
+  pop.innerHTML = `
+    <div class="c-label">${escapeHtml(label)}</div>
+    <textarea id="new-comment-text" placeholder="Leave a remark about this..."></textarea>
+    <div class="popover-actions">
+      <button class="btn btn-sm" id="new-comment-cancel">Cancel</button>
+      <button class="btn btn-sm btn-primary" id="new-comment-save">Save</button>
+    </div>
+  `;
+  pop.querySelector('#new-comment-cancel').onclick = closeCommentPopover;
+  pop.querySelector('#new-comment-save').onclick = async () => {
+    const text = pop.querySelector('#new-comment-text').value.trim();
+    if (!text) { toast('Write a remark first'); return; }
+    const { error } = await sb.from('snippet_comments').insert({
+      snippet_id: currentSnippet.id,
+      x_percent: xPercent,
+      y_percent: yPercent,
+      label,
+      comment: text,
+    });
+    if (error) { toast('Could not save remark: ' + error.message); return; }
+    closeCommentPopover();
+    await loadComments();
+  };
+}
+
+function openExistingCommentPopover(c) {
+  const pop = positionPopover(c.x_percent, c.y_percent);
+  pop.innerHTML = `
+    <div class="c-label">${escapeHtml(c.label || '')}</div>
+    <textarea id="edit-comment-text">${escapeHtml(c.comment)}</textarea>
+    <div class="popover-actions">
+      <button class="btn btn-sm btn-danger" id="comment-delete">Delete</button>
+      <div style="display:flex; gap:6px;">
+        <button class="btn btn-sm" id="comment-resolve">${c.resolved ? 'Reopen' : 'Mark done'}</button>
+        <button class="btn btn-sm btn-primary" id="comment-save">Save</button>
+      </div>
+    </div>
+  `;
+  pop.querySelector('#comment-delete').onclick = async () => {
+    if (!confirm('Delete this remark?')) return;
+    const { error } = await sb.from('snippet_comments').delete().eq('id', c.id);
+    if (error) { toast('Could not delete: ' + error.message); return; }
+    closeCommentPopover();
+    await loadComments();
+  };
+  pop.querySelector('#comment-resolve').onclick = async () => {
+    const { error } = await sb.from('snippet_comments').update({ resolved: !c.resolved }).eq('id', c.id);
+    if (error) { toast('Could not update: ' + error.message); return; }
+    closeCommentPopover();
+    await loadComments();
+  };
+  pop.querySelector('#comment-save').onclick = async () => {
+    const text = pop.querySelector('#edit-comment-text').value.trim();
+    if (!text) { toast('Remark cannot be empty'); return; }
+    const { error } = await sb.from('snippet_comments').update({ comment: text }).eq('id', c.id);
+    if (error) { toast('Could not save: ' + error.message); return; }
+    closeCommentPopover();
+    await loadComments();
+  };
 }
 
 async function saveEdit() {
@@ -208,4 +404,7 @@ function wireStaticButtons() {
   if (byId('edit-cancel')) byId('edit-cancel').onclick = exitEditMode;
   if (byId('edit-save')) byId('edit-save').onclick = saveEdit;
   if (byId('delete-btn')) byId('delete-btn').onclick = deleteCurrentSnippet;
+  document.querySelectorAll('.view-tab').forEach(t => {
+    t.onclick = () => { t.dataset.mode === 'preview' ? showPreviewTab() : showCodeTab(); };
+  });
 }
