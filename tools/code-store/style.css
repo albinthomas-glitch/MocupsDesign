@@ -87,7 +87,7 @@
 }
 .view-tab.active { color: var(--ink); background: var(--panel); }
 
-/* ---------- preview + pinned remarks ---------- */
+/* ---------- preview + section remarks ---------- */
 #preview-frame-box {
   position: relative;
   border: 1px solid var(--line);
@@ -97,25 +97,36 @@
 }
 #preview-frame { display: block; width: 100%; min-height: 200px; border: none; }
 #pin-layer { position: absolute; inset: 0; pointer-events: none; }
-.pin {
+.mark-box {
   position: absolute;
-  transform: translate(-50%, -50%);
-  width: 24px;
-  height: 24px;
+  border: 2px solid var(--accent);
+  background: rgba(47, 111, 79, 0.12);
+  border-radius: 3px;
+  cursor: pointer;
+  pointer-events: auto;
+  min-width: 8px;
+  min-height: 8px;
+}
+.mark-box:hover { background: rgba(47, 111, 79, 0.22); }
+.mark-box.resolved { border-color: #8a8f98; background: rgba(138, 143, 152, 0.12); }
+.mark-badge {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: var(--accent);
   color: #fff;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  pointer-events: auto;
   box-shadow: 0 1px 4px rgba(0,0,0,0.35);
   border: 2px solid #fff;
 }
-.pin.resolved { background: #8a8f98; }
+.mark-box.resolved .mark-badge { background: #8a8f98; }
 
 #comment-popover {
   position: absolute;

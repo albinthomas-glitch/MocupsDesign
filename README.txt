@@ -131,16 +131,20 @@ already show up on the portal menu.
     via highlight.js).
   - "Preview" — for HTML/CSS/JS snippets, renders the code as an actual
     live page in a sandboxed frame (the previewed code can't reach or
-    affect the portal itself, even if it has its own scripts). Click
-    anywhere on the rendered page to drop a numbered pin and leave a
-    remark about that spot — useful for marking things to fix later.
-    Pins and remarks are saved per snippet (in the "snippet_comments"
-    table) and are still there next time you open it. Click an existing
-    pin (or its entry in the list below the preview) to edit it, mark it
-    "done", or delete it. A remark's position is stored as a percentage
-    of the page, so it stays roughly in place even after you go edit the
-    code — it isn't tied to the exact element, so a big layout change can
-    still leave a pin looking slightly off.
+    affect the portal itself, even if it has its own scripts). Clicking
+    never triggers the page's own behavior (no navigation, no menus
+    opening, nothing) — every click is only ever a selection. Click any
+    element/section to outline its box and leave a remark about it —
+    useful for marking things to fix later. This is read-only review
+    only: there's no way to edit the code from this tab.
+    Remarks are saved per snippet (in the "snippet_comments" table) and
+    are still there next time you open it, drawn as an outlined box in
+    the same spot. Click an existing box (or its entry in the list below
+    the preview) to edit it, mark it "done", or delete it. A remark's
+    position/size is stored as a percentage of the page, not tied to the
+    exact element, so it stays roughly in place even after you go edit
+    the code — a big layout change can still leave a box looking
+    slightly off.
 - "Copy" copies the raw code to your clipboard.
 - "Edit" lets you change the filename and/or code; saving updates the row
   in Supabase. "Delete" removes the snippet and any remarks on it.

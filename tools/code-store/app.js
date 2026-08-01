@@ -190,13 +190,19 @@ function showPreviewTab() {
   loadComments();
 }
 
-/* ---------------- live preview + pinned comments ----------------
+/* ---------------- live preview + section comments ----------------
    The previewed code renders in a sandboxed iframe (allow-scripts only,
    no allow-same-origin) so it stays fully isolated from the portal --
    it can't reach this page's DOM or JS state. A small script is injected
-   into the previewed HTML itself, which reports its own height and click
-   positions back via postMessage, which sandboxed iframes are explicitly
-   allowed to send regardless of the sandbox restrictions. */
+   into the previewed HTML itself, which reports its own height and
+   selected-element boxes back via postMessage (which sandboxed iframes
+   are explicitly allowed to send regardless of the sandbox restrictions).
+
+   Every click is captured and stopped before it reaches the page's own
+   elements (stopPropagation in the capture phase, plus preventDefault),
+   so the previewed site never actually responds to clicks -- no
+   navigation, no menus opening, nothing -- clicking only ever selects
+   that element's box for commenting. */
 
 function renderPreviewFrame() {
   const frame = document.getElementById('preview-frame');
@@ -210,9 +216,14 @@ function renderPreviewFrame() {
   window.addEventListener('resize', reportSize);
   setTimeout(reportSize, 50);
   document.addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
     var el = e.target;
-    var w = document.documentElement.scrollWidth || 1;
-    var h = document.documentElement.scrollHeight || 1;
+    var docW = document.documentElement.scrollWidth || 1;
+    var docH = document.documentElement.scrollHeight || 1;
+    var rect = el.getBoundingClientRect();
+    var left = rect.left + window.scrollX;
+    var top = rect.top + window.scrollY;
     var label = (el.tagName || 'element').toLowerCase();
     if (el.id) label += '#' + el.id;
     else if (el.className && typeof el.className === 'string' && el.className.trim()) {
@@ -220,12 +231,13 @@ function renderPreviewFrame() {
     }
     parent.postMessage({
       source: 'code-store-preview',
-      type: 'click',
-      xPercent: (e.pageX / w) * 100,
-      yPercent: (e.pageY / h) * 100,
+      type: 'select',
+      xPercent: (left / docW) * 100,
+      yPercent: (top / docH) * 100,
+      widthPercent: (rect.width / docW) * 100,
+      heightPercent: (rect.height / docH) * 100,
       label: label,
     }, '*');
-    e.preventDefault();
   }, true);
 })();
 <\/script>`;
@@ -240,8 +252,8 @@ window.addEventListener('message', (e) => {
 
   if (e.data.type === 'resize') {
     frame.style.height = Math.max(e.data.height, 80) + 'px';
-  } else if (e.data.type === 'click') {
-    openNewCommentPopover(e.data.xPercent, e.data.yPercent, e.data.label);
+  } else if (e.data.type === 'select') {
+    openNewCommentPopover(e.data.xPercent, e.data.yPercent, e.data.widthPercent, e.data.heightPercent, e.data.label);
   }
 });
 
@@ -260,14 +272,21 @@ function renderPins() {
   const layer = document.getElementById('pin-layer');
   layer.innerHTML = '';
   comments.forEach((c, i) => {
-    const pin = document.createElement('div');
-    pin.className = 'pin' + (c.resolved ? ' resolved' : '');
-    pin.style.left = c.x_percent + '%';
-    pin.style.top = c.y_percent + '%';
-    pin.textContent = c.resolved ? '✓' : String(i + 1);
-    pin.title = c.comment;
-    pin.onclick = (ev) => { ev.stopPropagation(); openExistingCommentPopover(c); };
-    layer.appendChild(pin);
+    const box = document.createElement('div');
+    box.className = 'mark-box' + (c.resolved ? ' resolved' : '');
+    box.style.left = c.x_percent + '%';
+    box.style.top = c.y_percent + '%';
+    box.style.width = (c.width_percent || 0) + '%';
+    box.style.height = (c.height_percent || 0) + '%';
+    box.title = c.comment;
+
+    const badge = document.createElement('div');
+    badge.className = 'mark-badge';
+    badge.textContent = c.resolved ? '✓' : String(i + 1);
+    box.appendChild(badge);
+
+    box.onclick = (ev) => { ev.stopPropagation(); openExistingCommentPopover(c); };
+    layer.appendChild(box);
   });
 }
 
@@ -292,16 +311,16 @@ function closeCommentPopover() {
   if (pop) pop.style.display = 'none';
 }
 
-function positionPopover(xPercent, yPercent) {
+function positionPopover(xPercent, yPercent, heightPercent) {
   const pop = document.getElementById('comment-popover');
   pop.style.left = Math.min(xPercent, 70) + '%';
-  pop.style.top = yPercent + '%';
+  pop.style.top = Math.min(yPercent + (heightPercent || 0), 90) + '%';
   pop.style.display = 'block';
   return pop;
 }
 
-function openNewCommentPopover(xPercent, yPercent, label) {
-  const pop = positionPopover(xPercent, yPercent);
+function openNewCommentPopover(xPercent, yPercent, widthPercent, heightPercent, label) {
+  const pop = positionPopover(xPercent, yPercent, heightPercent);
   pop.innerHTML = `
     <div class="c-label">${escapeHtml(label)}</div>
     <textarea id="new-comment-text" placeholder="Leave a remark about this..."></textarea>
@@ -318,6 +337,8 @@ function openNewCommentPopover(xPercent, yPercent, label) {
       snippet_id: currentSnippet.id,
       x_percent: xPercent,
       y_percent: yPercent,
+      width_percent: widthPercent,
+      height_percent: heightPercent,
       label,
       comment: text,
     });
@@ -328,7 +349,7 @@ function openNewCommentPopover(xPercent, yPercent, label) {
 }
 
 function openExistingCommentPopover(c) {
-  const pop = positionPopover(c.x_percent, c.y_percent);
+  const pop = positionPopover(c.x_percent, c.y_percent, c.height_percent);
   pop.innerHTML = `
     <div class="c-label">${escapeHtml(c.label || '')}</div>
     <textarea id="edit-comment-text">${escapeHtml(c.comment)}</textarea>

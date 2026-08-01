@@ -151,20 +151,25 @@ create table if not exists snippets (
   updated_at timestamptz not null default now()
 );
 
--- Review remarks pinned to a spot in a snippet's rendered preview (see
--- "Preview" tab in Code Store). Positioned by percentage of the rendered
--- page's width/height, not a DOM selector, so a pin stays roughly where
--- you left it even after you go edit the code.
+-- Review remarks pinned to a section of a snippet's rendered preview (see
+-- "Preview" tab in Code Store). x/y/width/height are the clicked
+-- element's bounding box, stored as a percentage of the rendered page --
+-- not a DOM selector -- so a mark stays roughly where you left it even
+-- after you go edit the code.
 create table if not exists snippet_comments (
   id uuid primary key default gen_random_uuid(),
   snippet_id uuid not null references snippets(id) on delete cascade,
   x_percent numeric not null,
   y_percent numeric not null,
+  width_percent numeric not null default 0,
+  height_percent numeric not null default 0,
   label text,
   comment text not null,
   resolved boolean not null default false,
   created_at timestamptz not null default now()
 );
+alter table snippet_comments add column if not exists width_percent numeric not null default 0;
+alter table snippet_comments add column if not exists height_percent numeric not null default 0;
 
 alter table snippets enable row level security;
 
