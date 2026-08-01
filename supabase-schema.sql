@@ -141,6 +141,35 @@ create policy "authenticated insert" on media for insert with check (auth.role()
 create policy "authenticated update" on media for update using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 create policy "authenticated delete" on media for delete using (auth.role() = 'authenticated');
 
+-- Code Store tool: snippets live directly in Supabase (plain text rows),
+-- not in GitHub -- no separate token/repo setup needed for this tool.
+create table if not exists snippets (
+  id uuid primary key default gen_random_uuid(),
+  filename text not null,
+  code text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table snippets enable row level security;
+
+drop policy if exists "public read" on snippets;
+drop policy if exists "authenticated insert" on snippets;
+drop policy if exists "authenticated update" on snippets;
+drop policy if exists "authenticated delete" on snippets;
+create policy "public read" on snippets for select using (true);
+create policy "authenticated insert" on snippets for insert with check (auth.role() = 'authenticated');
+create policy "authenticated update" on snippets for update using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "authenticated delete" on snippets for delete using (auth.role() = 'authenticated');
+
+insert into tools (name, description, icon, href, sort_order)
+select 'Code Store',
+       'Paste code, preview it with syntax highlighting, and save it as a snippet.',
+       '📝',
+       'tools/code-store/index.html',
+       1
+where not exists (select 1 from tools where href = 'tools/code-store/index.html');
+
 insert into storage.buckets (id, name, public)
 values ('media', 'media', true)
 on conflict (id) do nothing;

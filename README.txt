@@ -10,7 +10,7 @@ are two so far:
     trigger / message / popup / backend — for manager review, with
     screenshots or short videos, PDF export, and share links).
   - "Code Store" (paste code, preview it with syntax highlighting, and
-    save it as a file in a GitHub repo instead of Supabase).
+    save it as a snippet).
 You can add more tools later; see "ADDING A NEW TOOL" below.
 
 Layout:
@@ -19,19 +19,13 @@ Layout:
                                           modal/toast/login styling, used by
                                           the portal and every tool
   config.js                           -> your Supabase project URL/key +
-                                          shared login email + Code Store's
-                                          non-secret repo owner/name/branch
-                                          (one config for the whole portal
-                                          and all tools)
+                                          shared login email (one config for
+                                          the whole portal and all tools)
   supabase-schema.sql                 -> database setup script
   tools/widget-scenario-spec/         -> Widget Scenario Specs, self-contained
                                           (index.html, app.js, style.css)
   tools/code-store/                   -> Code Store, self-contained
                                           (index.html, app.js, style.css)
-  netlify/functions/code-store.js     -> server-side proxy that holds the
-                                          real GitHub token (see below) --
-                                          only runs when deployed to Netlify,
-                                          or locally via `netlify dev`
 
 Data lives in a free Supabase project (Postgres database + file storage),
 not in local files. The pages themselves are a plain static site you can
@@ -55,9 +49,10 @@ ONE-TIME SETUP: CREATE YOUR SUPABASE PROJECT
 3. Open the SQL Editor (left sidebar) -> "New query".
 4. Open supabase-schema.sql from this folder, copy its entire contents,
    paste into the SQL editor, and click "Run".
-   This creates the tables the Widget Scenario Specs tool needs, a
-   public "media" storage bucket for screenshots/videos, and the access
-   policies described above (public read, login-required write).
+   This creates the tables both tools need (including Code Store's
+   "snippets" table and its menu card), a public "media" storage bucket
+   for screenshots/videos, and the access policies described above
+   (public read, login-required write).
 5. Go to Project Settings -> API. Copy the "Project URL" and the
    "anon public" API key.
 6. Open config.js in this folder and paste those two values in:
@@ -88,21 +83,6 @@ local server from this folder instead, e.g.:
 then open http://localhost:8000 in your browser.
 
 (Or, if you have Node: npx serve)
-
-Note: this plain local server does NOT run netlify/functions/code-store.js,
-so Code Store won't be able to list, view, save, or delete snippets this
-way (you'll see a "Failed to fetch" / 404-style error in a toast). The
-portal and Widget Scenario Specs tool are unaffected -- they only use
-Supabase, not this function. To test Code Store locally too, use the
-Netlify CLI instead:
-
-  npm i -g netlify-cli
-  netlify link      (first time only -- connects this folder to your site)
-  netlify dev
-
-netlify dev serves the site AND runs the function locally, pulling
-GITHUB_TOKEN from the environment variable you set on the linked Netlify
-site (see "Code Store on Netlify" below) — nothing extra to configure.
 
 
 USING THE PORTAL
@@ -138,64 +118,19 @@ USING THE WIDGET SCENARIO SPECS TOOL
     categories/scenarios/media, let you manage content as it evolves.
 
 
-ONE-TIME SETUP: CODE STORE (GitHub instead of Supabase)
------------------------------------------------------------
-Code Store keeps snippets as plain files in a GitHub repo rather than in
-Supabase. Unlike the Supabase anon key, a GitHub token is NOT safe to ship
-to the browser -- it grants direct read/write on whatever repo it's
-scoped to, with no row-level-security equivalent protecting it. So the
-token never goes in any file at all (not config.js, not any other
-committed or local file). Instead:
-  - The browser calls a small server function (netlify/functions/
-    code-store.js) instead of calling GitHub directly.
-  - That function reads the token from Netlify's Environment Variables
-    (set once in the dashboard, never written to disk) and makes the
-    GitHub API call itself.
-  - The function also checks that the request carries a valid, currently
-    logged-in Supabase session before doing anything -- so only someone
-    who's actually logged into this portal can use it, same as every
-    other write in this app.
-This means Code Store's write path only works when the site is served by
-Netlify (or `netlify dev` locally) -- see "RUNNING IT LOCALLY" below.
-
-1. Pick (or create) a GitHub repo to hold snippets. A private repo
-   dedicated to this is recommended over reusing an existing project repo.
-2. Create a fine-grained personal access token:
-   github.com/settings/tokens?type=beta -> "Generate new token"
-   - Under "Repository access", select "Only select repositories" and
-     pick the one repo from step 1. Do NOT grant access to all repos.
-   - Under "Permissions" -> "Repository permissions", set
-     "Contents" to "Read and write". Leave everything else as "No access".
-   - Generate the token and copy it (GitHub only shows it once).
-3. Open config.js and fill in the non-secret values (just a repo name/
-   branch/path, safe to commit -- the token itself does NOT go here):
-
-     const GITHUB_OWNER = "your-github-username";
-     const GITHUB_REPO = "your-repo-name";
-     const GITHUB_BRANCH = "main";
-     const GITHUB_SNIPPETS_PATH = "snippets";
-
-4. Add the token as a Netlify Environment Variable -- see "Code Store on
-   Netlify" under "DEPLOYING TO NETLIFY" below. That's the only place it
-   needs to be entered.
-
-The "snippets" folder in GITHUB_SNIPPETS_PATH doesn't need to exist ahead
-of time — GitHub creates it automatically the first time a snippet is
-saved.
-
-
 USING THE CODE STORE TOOL
 -----------------------------
+No separate setup needed -- Code Store uses the same Supabase project as
+everything else (the "snippets" table from supabase-schema.sql). Running
+that schema also seeds Code Store's menu card automatically, so it should
+already show up on the portal menu.
 - You'll see a grid of saved snippets. Click "+ New Snippet" to add one:
   give it a filename (e.g. main.py, helper.js) and paste the code.
 - Click a snippet to preview it with syntax highlighting (auto-detected
   from the code, via highlight.js).
 - "Copy" copies the raw code to your clipboard.
-- "Edit" lets you change the filename and/or code; saving commits the
-  change to the GitHub repo (renaming deletes the old file and adds the
-  new one). "Delete" removes the file from the repo.
-- Every save/delete is a real commit to your GitHub repo, so full history
-  is available there if you ever want to see prior versions.
+- "Edit" lets you change the filename and/or code; saving updates the row
+  in Supabase. "Delete" removes it.
 
 
 ADDING A NEW TOOL
@@ -247,8 +182,8 @@ DEPLOYING TO NETLIFY (optional — only if you want a live shareable link)
 ---------------------------------------------------------------------------
 Easiest: connect the GitHub repo in the Netlify dashboard (Add new site ->
 Import an existing project -> pick this repo). Netlify will read
-netlify.toml automatically (publish directory `.`, functions directory
-netlify/functions) and deploy on every push to main.
+netlify.toml automatically (publish directory `.`) and deploy on every
+push to main.
 
 Or via CLI:
 1. Install Netlify CLI once:  npm i -g netlify-cli
@@ -261,25 +196,8 @@ Or via CLI:
    and send that per-project link.
 
 Since the data lives in Supabase (not in files), you generally don't
-need to redeploy after adding projects/scenarios/media — only redeploy
-if you change any of the .html/.js/.css files.
-
-Code Store on Netlify (required for Code Store to work at all, local or
-deployed):
-1. Netlify dashboard -> your site -> Site configuration -> Environment
-   variables.
-2. Add one named exactly GITHUB_TOKEN, value = your fine-grained token
-   from "ONE-TIME SETUP: CODE STORE" above, scoped to whichever contexts
-   you want (Production/Deploy previews).
-3. Redeploy (Deploys -> Trigger deploy, or push a commit) so
-   netlify/functions/code-store.js picks it up — Netlify Functions read
-   environment variables at request time, so any deploy after saving the
-   variable will have it.
-The token is read only inside that function's server-side process; it is
-never written to any file, never bundled into the site's static assets,
-and never visible to anyone browsing the deployed site. If you skip this
-step, everything else (the portal, Widget Scenario Specs) still works
-fine on Netlify; only Code Store needs it.
+need to redeploy after adding projects/scenarios/media/snippets — only
+redeploy if you change any of the .html/.js/.css files.
 
 
 LEGACY FILES

@@ -9,14 +9,3 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // The email itself isn't shown to anyone -- only the password is asked for
 // on the login screen. Any unique email works; it doesn't need to be real.
 const SHARED_LOGIN_EMAIL = "testop99QA@gmail.com";
-
-// ---- Code Store tool (tools/code-store/) ----
-// These four are NOT secret on their own (just a repo name/branch/path,
-// like a URL) so they're safe to commit here. The actual GitHub token
-// lives only in Netlify's Environment Variables, read server-side by
-// netlify/functions/code-store.js -- it never reaches this file or the
-// browser. See README.txt -> "ONE-TIME SETUP: CODE STORE".
-const GITHUB_OWNER = "albinthomas-glitch";
-const GITHUB_REPO = "MocupsDesign";
-const GITHUB_BRANCH = "main";
-const GITHUB_SNIPPETS_PATH = "snippets";

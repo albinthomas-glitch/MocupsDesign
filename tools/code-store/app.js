@@ -1,18 +1,17 @@
 const params = new URLSearchParams(location.search);
-const activeFilename = params.get('snippet');
+const activeId = params.get('snippet');
 
 let sb;
-let snippets = [];        // list from the GitHub folder (name, path, sha, ...)
-let currentSnippet = null; // { name, path, sha, text }
+let snippets = [];        // list from Supabase (id, filename, code, ...)
+let currentSnippet = null; // { id, filename, code, created_at, updated_at }
 
-const configured = SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes('YOUR_SUPABASE')
-  && typeof GITHUB_OWNER !== 'undefined' && GITHUB_OWNER && !GITHUB_OWNER.includes('YOUR_GITHUB');
+const configured = SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes('YOUR_SUPABASE');
 
 if (!configured) {
   document.body.innerHTML =
     '<div style="max-width:520px;margin:80px auto;font:14px -apple-system,Segoe UI,sans-serif;color:#5a6470;text-align:center;line-height:1.6;">' +
-    '<strong style="color:#1c2126;">Not configured yet.</strong><br>' +
-    'Open <code>config.js</code> and fill in the Supabase + GITHUB_OWNER/REPO values ' +
+    '<strong style="color:#1c2126;">Supabase is not configured yet.</strong><br>' +
+    'Open <code>config.js</code> and paste in your Supabase project URL and anon key ' +
     '(see README.txt for step-by-step setup).</div>';
 } else {
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -29,9 +28,9 @@ async function boot() {
 }
 
 async function init() {
-  if (activeFilename) {
+  if (activeId) {
     showDetailView();
-    await loadSnippet(activeFilename);
+    await loadSnippet(activeId);
   } else {
     showListView();
     await loadSnippetList();
@@ -76,47 +75,6 @@ function closeModal() {
   document.getElementById('modal-overlay').style.display = 'none';
 }
 
-/* ---------------- GitHub Contents API (via server-side proxy) ----------------
-   The GitHub token never reaches this file or the browser -- it lives only
-   in the Netlify Function's environment. This just calls that function,
-   passing along the current Supabase session so the function can verify
-   we're actually logged in before touching GitHub. */
-async function callProxy(action, payload) {
-  const { data } = await sb.auth.getSession();
-  const sessionToken = data.session && data.session.access_token;
-  const res = await fetch('/.netlify/functions/code-store', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
-    body: JSON.stringify({
-      action,
-      owner: GITHUB_OWNER,
-      repo: GITHUB_REPO,
-      branch: GITHUB_BRANCH,
-      path: GITHUB_SNIPPETS_PATH,
-      ...payload,
-    }),
-  });
-  const result = await res.json();
-  if (!res.ok) throw new Error(result.error || res.statusText);
-  return result;
-}
-
-async function ghListSnippets() {
-  return callProxy('list', {});
-}
-
-async function ghGetSnippet(filename) {
-  return callProxy('get', { filename });
-}
-
-async function ghSaveSnippet(filename, code, existingSha) {
-  return callProxy('save', { filename, code, sha: existingSha || undefined });
-}
-
-async function ghDeleteSnippet(filename, sha) {
-  await callProxy('delete', { filename, sha });
-}
-
 /* ================= LIST VIEW ================= */
 
 async function loadSnippetList() {
@@ -124,12 +82,12 @@ async function loadSnippetList() {
   const empty = document.getElementById('list-empty');
   grid.innerHTML = '';
 
-  try {
-    snippets = await ghListSnippets();
-  } catch (err) {
-    grid.innerHTML = `<div class="empty-state">Could not load snippets: ${escapeHtml(err.message)}</div>`;
+  const { data, error } = await sb.from('snippets').select('*').order('filename');
+  if (error) {
+    grid.innerHTML = `<div class="empty-state">Could not load snippets: ${escapeHtml(error.message)}</div>`;
     return;
   }
+  snippets = data || [];
 
   if (!snippets.length) {
     empty.style.display = 'block';
@@ -137,21 +95,18 @@ async function loadSnippetList() {
   }
   empty.style.display = 'none';
 
-  snippets
-    .slice()
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .forEach(s => {
-      const card = document.createElement('div');
-      card.className = 'snippet-card';
-      card.innerHTML = `
-        <h3>${escapeHtml(s.name)}</h3>
-        <div class="meta">${(s.size / 1024).toFixed(1)} KB</div>
-      `;
-      card.addEventListener('click', () => {
-        location.href = '?snippet=' + encodeURIComponent(s.name);
-      });
-      grid.appendChild(card);
+  snippets.forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'snippet-card';
+    card.innerHTML = `
+      <h3>${escapeHtml(s.filename)}</h3>
+      <div class="meta">Updated ${new Date(s.updated_at).toLocaleDateString()}</div>
+    `;
+    card.addEventListener('click', () => {
+      location.href = '?snippet=' + encodeURIComponent(s.id);
     });
+    grid.appendChild(card);
+  });
 }
 
 function openNewSnippetModal() {
@@ -169,37 +124,32 @@ function openNewSnippetModal() {
       const filename = box.querySelector('#f-filename').value.trim();
       const code = box.querySelector('#f-code').value;
       if (!filename) { toast('Filename is required'); return; }
-      if (filename.includes('/') || filename.includes('\\')) { toast('Filename cannot contain slashes'); return; }
-      try {
-        await ghSaveSnippet(filename, code, null);
-        location.href = '?snippet=' + encodeURIComponent(filename);
-      } catch (err) {
-        toast('Could not create snippet: ' + err.message);
-      }
+      const { data, error } = await sb.from('snippets').insert({ filename, code }).select().single();
+      if (error) { toast('Could not create snippet: ' + error.message); return; }
+      location.href = '?snippet=' + encodeURIComponent(data.id);
     };
   });
 }
 
 /* ================= DETAIL VIEW ================= */
 
-async function loadSnippet(filename) {
-  const codeView = document.getElementById('code-view-inner');
-  try {
-    currentSnippet = await ghGetSnippet(filename);
-  } catch (err) {
+async function loadSnippet(id) {
+  const { data, error } = await sb.from('snippets').select('*').eq('id', id).single();
+  if (error || !data) {
     document.getElementById('snippet-name').textContent = 'Not found';
-    codeView.textContent = '';
-    toast('Could not load snippet: ' + err.message);
+    document.getElementById('code-view-inner').textContent = '';
+    toast('Could not load snippet: ' + (error ? error.message : 'not found'));
     return;
   }
+  currentSnippet = data;
   renderSnippet();
 }
 
 function renderSnippet() {
   const s = currentSnippet;
-  document.getElementById('snippet-name').textContent = s.name;
+  document.getElementById('snippet-name').textContent = s.filename;
   const codeView = document.getElementById('code-view-inner');
-  codeView.textContent = s.text;
+  codeView.textContent = s.code;
   codeView.className = '';
   hljs.highlightElement(codeView);
   exitEditMode();
@@ -208,8 +158,8 @@ function renderSnippet() {
 function enterEditMode() {
   document.getElementById('code-view').style.display = 'none';
   document.getElementById('edit-view').style.display = 'block';
-  document.getElementById('edit-filename').value = currentSnippet.name;
-  document.getElementById('edit-code').value = currentSnippet.text;
+  document.getElementById('edit-filename').value = currentSnippet.filename;
+  document.getElementById('edit-code').value = currentSnippet.code;
 }
 
 function exitEditMode() {
@@ -221,35 +171,30 @@ async function saveEdit() {
   const newFilename = document.getElementById('edit-filename').value.trim();
   const newCode = document.getElementById('edit-code').value;
   if (!newFilename) { toast('Filename is required'); return; }
-  if (newFilename.includes('/') || newFilename.includes('\\')) { toast('Filename cannot contain slashes'); return; }
 
-  try {
-    if (newFilename === currentSnippet.name) {
-      await ghSaveSnippet(newFilename, newCode, currentSnippet.sha);
-    } else {
-      await ghSaveSnippet(newFilename, newCode, null);
-      await ghDeleteSnippet(currentSnippet.name, currentSnippet.sha);
-    }
-    toast('Saved');
-    location.href = '?snippet=' + encodeURIComponent(newFilename);
-  } catch (err) {
-    toast('Could not save: ' + err.message);
-  }
+  const { error } = await sb.from('snippets').update({
+    filename: newFilename,
+    code: newCode,
+    updated_at: new Date().toISOString(),
+  }).eq('id', currentSnippet.id);
+  if (error) { toast('Could not save: ' + error.message); return; }
+
+  currentSnippet.filename = newFilename;
+  currentSnippet.code = newCode;
+  toast('Saved');
+  renderSnippet();
 }
 
 async function deleteCurrentSnippet() {
-  if (!confirm('Delete "' + currentSnippet.name + '"? This cannot be undone.')) return;
-  try {
-    await ghDeleteSnippet(currentSnippet.name, currentSnippet.sha);
-    location.href = location.pathname;
-  } catch (err) {
-    toast('Could not delete: ' + err.message);
-  }
+  if (!confirm('Delete "' + currentSnippet.filename + '"? This cannot be undone.')) return;
+  const { error } = await sb.from('snippets').delete().eq('id', currentSnippet.id);
+  if (error) { toast('Could not delete: ' + error.message); return; }
+  location.href = location.pathname;
 }
 
 function copyCurrentSnippet() {
   if (!currentSnippet) return;
-  navigator.clipboard.writeText(currentSnippet.text).then(() => toast('Copied to clipboard'));
+  navigator.clipboard.writeText(currentSnippet.code).then(() => toast('Copied to clipboard'));
 }
 
 /* ---------------- static button wiring ---------------- */
