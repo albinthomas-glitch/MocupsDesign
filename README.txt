@@ -146,6 +146,14 @@ already show up on the portal menu.
     the code — a big layout change can still leave a box looking
     slightly off.
 - "Copy" copies the raw code to your clipboard.
+- "Share" copies a link that opens this snippet in read-only view, no
+  login needed — useful for sending to someone (e.g. a backend developer)
+  to review the code and remarks without giving them portal access. In
+  this view: the Code/Preview tabs and existing remarks are all visible,
+  but "Edit", "Delete", and "Share" are hidden, and clicking the preview
+  no longer lets you add new remarks or edit/delete/resolve existing ones
+  — it's look-only, same read-only spirit as Widget Scenario Specs'
+  Share links.
 - "Edit" lets you change the filename and/or code; saving updates the row
   in Supabase. "Delete" removes the snippet and any remarks on it.
 

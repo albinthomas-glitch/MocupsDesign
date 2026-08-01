@@ -1,5 +1,6 @@
 const params = new URLSearchParams(location.search);
 const activeId = params.get('snippet');
+const viewOnly = params.get('mode') === 'view';
 
 let sb;
 let snippets = [];        // list from Supabase (id, filename, code, ...)
@@ -21,6 +22,10 @@ if (!configured) {
 }
 
 async function boot() {
+  if (viewOnly) {
+    init();
+    return;
+  }
   const { data } = await sb.auth.getSession();
   if (data.session) {
     init();
@@ -48,6 +53,9 @@ function showListView() {
 function showDetailView() {
   document.getElementById('list-view').style.display = 'none';
   document.getElementById('detail-view').style.display = 'block';
+  document.querySelectorAll('.owner-controls').forEach(el => {
+    el.style.display = viewOnly ? 'none' : 'flex';
+  });
 }
 
 function escapeHtml(str) {
@@ -252,7 +260,7 @@ window.addEventListener('message', (e) => {
 
   if (e.data.type === 'resize') {
     frame.style.height = Math.max(e.data.height, 80) + 'px';
-  } else if (e.data.type === 'select') {
+  } else if (e.data.type === 'select' && !viewOnly) {
     openNewCommentPopover(e.data.xPercent, e.data.yPercent, e.data.widthPercent, e.data.heightPercent, e.data.label);
   }
 });
@@ -294,7 +302,9 @@ function renderCommentList() {
   const list = document.getElementById('comment-list');
   list.innerHTML = '';
   if (!comments.length) {
-    list.innerHTML = '<div class="empty-state">No remarks yet. Click anywhere on the preview to leave one.</div>';
+    list.innerHTML = viewOnly
+      ? '<div class="empty-state">No remarks on this snippet.</div>'
+      : '<div class="empty-state">No remarks yet. Click any element on the preview to leave one.</div>';
     return;
   }
   comments.forEach((c, i) => {
@@ -350,6 +360,19 @@ function openNewCommentPopover(xPercent, yPercent, widthPercent, heightPercent, 
 
 function openExistingCommentPopover(c) {
   const pop = positionPopover(c.x_percent, c.y_percent, c.height_percent);
+
+  if (viewOnly) {
+    pop.innerHTML = `
+      <div class="c-label">${escapeHtml(c.label || '')}${c.resolved ? ' — done' : ''}</div>
+      <div class="popover-readonly-text">${escapeHtml(c.comment)}</div>
+      <div class="popover-actions" style="justify-content:flex-end;">
+        <button class="btn btn-sm" id="popover-close">Close</button>
+      </div>
+    `;
+    pop.querySelector('#popover-close').onclick = closeCommentPopover;
+    return;
+  }
+
   pop.innerHTML = `
     <div class="c-label">${escapeHtml(c.label || '')}</div>
     <textarea id="edit-comment-text">${escapeHtml(c.comment)}</textarea>
@@ -409,6 +432,15 @@ async function deleteCurrentSnippet() {
   location.href = location.pathname;
 }
 
+function shareSnippet() {
+  const url = location.origin + location.pathname + '?snippet=' + encodeURIComponent(currentSnippet.id) + '&mode=view';
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => toast('Share link copied to clipboard'));
+  } else {
+    prompt('Copy this link:', url);
+  }
+}
+
 function copyCurrentSnippet() {
   if (!currentSnippet) return;
   navigator.clipboard.writeText(currentSnippet.code).then(() => toast('Copied to clipboard'));
@@ -421,6 +453,7 @@ function wireStaticButtons() {
   if (byId('new-snippet-btn')) byId('new-snippet-btn').onclick = openNewSnippetModal;
   if (byId('back-btn')) byId('back-btn').onclick = () => { location.href = location.pathname; };
   if (byId('copy-btn')) byId('copy-btn').onclick = copyCurrentSnippet;
+  if (byId('share-btn')) byId('share-btn').onclick = shareSnippet;
   if (byId('edit-btn')) byId('edit-btn').onclick = enterEditMode;
   if (byId('edit-cancel')) byId('edit-cancel').onclick = exitEditMode;
   if (byId('edit-save')) byId('edit-save').onclick = saveEdit;
