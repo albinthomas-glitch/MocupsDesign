@@ -19,14 +19,19 @@ Layout:
                                           modal/toast/login styling, used by
                                           the portal and every tool
   config.js                           -> your Supabase project URL/key +
-                                          shared login email + GitHub token
-                                          for Code Store (one config for the
-                                          whole portal and all tools)
+                                          shared login email + Code Store's
+                                          non-secret repo owner/name/branch
+                                          (one config for the whole portal
+                                          and all tools)
   supabase-schema.sql                 -> database setup script
   tools/widget-scenario-spec/         -> Widget Scenario Specs, self-contained
                                           (index.html, app.js, style.css)
   tools/code-store/                   -> Code Store, self-contained
                                           (index.html, app.js, style.css)
+  netlify/functions/code-store.js     -> server-side proxy that holds the
+                                          real GitHub token (see below) --
+                                          only runs when deployed to Netlify,
+                                          or locally via `netlify dev`
 
 Data lives in a free Supabase project (Postgres database + file storage),
 not in local files. The pages themselves are a plain static site you can
@@ -84,6 +89,21 @@ then open http://localhost:8000 in your browser.
 
 (Or, if you have Node: npx serve)
 
+Note: this plain local server does NOT run netlify/functions/code-store.js,
+so Code Store won't be able to list, view, save, or delete snippets this
+way (you'll see a "Failed to fetch" / 404-style error in a toast). The
+portal and Widget Scenario Specs tool are unaffected -- they only use
+Supabase, not this function. To test Code Store locally too, use the
+Netlify CLI instead:
+
+  npm i -g netlify-cli
+  netlify link      (first time only -- connects this folder to your site)
+  netlify dev
+
+netlify dev serves the site AND runs the function locally, pulling
+GITHUB_TOKEN from the environment variable you set on the linked Netlify
+site (see "Code Store on Netlify" below) — nothing extra to configure.
+
 
 USING THE PORTAL
 ------------------
@@ -121,14 +141,22 @@ USING THE WIDGET SCENARIO SPECS TOOL
 ONE-TIME SETUP: CODE STORE (GitHub instead of Supabase)
 -----------------------------------------------------------
 Code Store keeps snippets as plain files in a GitHub repo rather than in
-Supabase. Its config is split across two files:
-  - config.js        -> repo owner/name/branch/path (not secret, committed)
-  - config.local.js   -> the actual GitHub token (secret, gitignored —
-                          never committed, never pushed)
-This split exists specifically so the token can never end up in git
-history. Putting it in config.js instead will get your push rejected by
-GitHub's push protection (or worse, actually leak it, if push protection
-isn't enabled on the target repo).
+Supabase. Unlike the Supabase anon key, a GitHub token is NOT safe to ship
+to the browser -- it grants direct read/write on whatever repo it's
+scoped to, with no row-level-security equivalent protecting it. So the
+token never goes in any file at all (not config.js, not any other
+committed or local file). Instead:
+  - The browser calls a small server function (netlify/functions/
+    code-store.js) instead of calling GitHub directly.
+  - That function reads the token from Netlify's Environment Variables
+    (set once in the dashboard, never written to disk) and makes the
+    GitHub API call itself.
+  - The function also checks that the request carries a valid, currently
+    logged-in Supabase session before doing anything -- so only someone
+    who's actually logged into this portal can use it, same as every
+    other write in this app.
+This means Code Store's write path only works when the site is served by
+Netlify (or `netlify dev` locally) -- see "RUNNING IT LOCALLY" below.
 
 1. Pick (or create) a GitHub repo to hold snippets. A private repo
    dedicated to this is recommended over reusing an existing project repo.
@@ -139,39 +167,21 @@ isn't enabled on the target repo).
    - Under "Permissions" -> "Repository permissions", set
      "Contents" to "Read and write". Leave everything else as "No access".
    - Generate the token and copy it (GitHub only shows it once).
-3. Open config.js and fill in the non-secret values:
+3. Open config.js and fill in the non-secret values (just a repo name/
+   branch/path, safe to commit -- the token itself does NOT go here):
 
      const GITHUB_OWNER = "your-github-username";
      const GITHUB_REPO = "your-repo-name";
      const GITHUB_BRANCH = "main";
      const GITHUB_SNIPPETS_PATH = "snippets";
 
-4. Copy config.local.example.js to a new file named config.local.js
-   (same folder) and fill in the token:
-
-     const GITHUB_TOKEN = "github_pat_...";
-
-   config.local.js is listed in .gitignore, so `git status` should never
-   show it as a change to commit. If it ever does, stop and check your
-   .gitignore before committing.
-
-IMPORTANT: unlike the Supabase anon key, this token is not safe-by-design
-— it's shipped to the browser because this is a static site with no
-server, and it grants read/write on whatever repo you scoped it to.
-Scoping it to one dedicated repo with only "Contents" access (as above)
-limits what someone could do with it if config.local.js ever leaked.
-Anyone who can log into this portal can use this token, same trust level
-as everything else here.
+4. Add the token as a Netlify Environment Variable -- see "Code Store on
+   Netlify" under "DEPLOYING TO NETLIFY" below. That's the only place it
+   needs to be entered.
 
 The "snippets" folder in GITHUB_SNIPPETS_PATH doesn't need to exist ahead
 of time — GitHub creates it automatically the first time a snippet is
 saved.
-
-If you deploy this to Netlify (see "DEPLOYING TO NETLIFY" below): Netlify
-only serves what's in the git repo, so config.local.js (gitignored) won't
-be there by default. To make Code Store work on the deployed URL too,
-see "Code Store on Netlify" in that section — it generates config.local.js
-at build time from a Netlify Environment Variable instead of from git.
 
 
 USING THE CODE STORE TOOL
@@ -237,8 +247,8 @@ DEPLOYING TO NETLIFY (optional — only if you want a live shareable link)
 ---------------------------------------------------------------------------
 Easiest: connect the GitHub repo in the Netlify dashboard (Add new site ->
 Import an existing project -> pick this repo). Netlify will read
-netlify.toml automatically (build command `npm run build`, publish
-directory `.`) and deploy on every push to main.
+netlify.toml automatically (publish directory `.`, functions directory
+netlify/functions) and deploy on every push to main.
 
 Or via CLI:
 1. Install Netlify CLI once:  npm i -g netlify-cli
@@ -254,21 +264,22 @@ Since the data lives in Supabase (not in files), you generally don't
 need to redeploy after adding projects/scenarios/media — only redeploy
 if you change any of the .html/.js/.css files.
 
-Code Store on Netlify (optional):
-Code Store's GitHub token deliberately isn't in git (see "ONE-TIME SETUP:
-CODE STORE" above), so a plain Netlify deploy won't have it and Code
-Store will show "Not configured yet" on the live URL. To fix that:
+Code Store on Netlify (required for Code Store to work at all, local or
+deployed):
 1. Netlify dashboard -> your site -> Site configuration -> Environment
    variables.
-2. Add one named exactly GITHUB_TOKEN, value = your fine-grained token,
-   scoped to whichever contexts you want (Production/Deploy previews).
-3. Redeploy (Deploys -> Trigger deploy, or push a commit).
-   package.json + netlify.toml in this project already tell Netlify to
-   run generate-config-local.js during the build, which turns that
-   environment variable into config.local.js for that deploy only — it's
-   never written back into git.
-If you skip this, everything else (the portal, Widget Scenario Specs)
-still works fine on Netlify; only Code Store needs this extra step.
+2. Add one named exactly GITHUB_TOKEN, value = your fine-grained token
+   from "ONE-TIME SETUP: CODE STORE" above, scoped to whichever contexts
+   you want (Production/Deploy previews).
+3. Redeploy (Deploys -> Trigger deploy, or push a commit) so
+   netlify/functions/code-store.js picks it up — Netlify Functions read
+   environment variables at request time, so any deploy after saving the
+   variable will have it.
+The token is read only inside that function's server-side process; it is
+never written to any file, never bundled into the site's static assets,
+and never visible to anyone browsing the deployed site. If you skip this
+step, everything else (the portal, Widget Scenario Specs) still works
+fine on Netlify; only Code Store needs it.
 
 
 LEGACY FILES

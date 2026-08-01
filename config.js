@@ -12,8 +12,10 @@ const SHARED_LOGIN_EMAIL = "testop99QA@gmail.com";
 
 // ---- Code Store tool (tools/code-store/) ----
 // These four are NOT secret on their own (just a repo name/branch/path,
-// like a URL) so they're safe to commit here. The actual GitHub token is
-// NOT safe to commit -- see config.local.js (gitignored, never pushed).
+// like a URL) so they're safe to commit here. The actual GitHub token
+// lives only in Netlify's Environment Variables, read server-side by
+// netlify/functions/code-store.js -- it never reaches this file or the
+// browser. See README.txt -> "ONE-TIME SETUP: CODE STORE".
 const GITHUB_OWNER = "albinthomas-glitch";
 const GITHUB_REPO = "MocupsDesign";
 const GITHUB_BRANCH = "main";

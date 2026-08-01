@@ -1,7 +1,0 @@
-{
-  "name": "mocups-tools-portal",
-  "private": true,
-  "scripts": {
-    "build": "node generate-config-local.js"
-  }
-}

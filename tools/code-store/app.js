@@ -5,17 +5,14 @@ let sb;
 let snippets = [];        // list from the GitHub folder (name, path, sha, ...)
 let currentSnippet = null; // { name, path, sha, text }
 
-const GITHUB_API = 'https://api.github.com';
 const configured = SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes('YOUR_SUPABASE')
-  && typeof GITHUB_TOKEN !== 'undefined' && GITHUB_TOKEN && !GITHUB_TOKEN.includes('YOUR_GITHUB')
   && typeof GITHUB_OWNER !== 'undefined' && GITHUB_OWNER && !GITHUB_OWNER.includes('YOUR_GITHUB');
 
 if (!configured) {
   document.body.innerHTML =
     '<div style="max-width:520px;margin:80px auto;font:14px -apple-system,Segoe UI,sans-serif;color:#5a6470;text-align:center;line-height:1.6;">' +
     '<strong style="color:#1c2126;">Not configured yet.</strong><br>' +
-    'Open <code>config.js</code> and fill in the Supabase + GITHUB_OWNER/REPO values, and copy ' +
-    '<code>config.local.example.js</code> to <code>config.local.js</code> and fill in GITHUB_TOKEN ' +
+    'Open <code>config.js</code> and fill in the Supabase + GITHUB_OWNER/REPO values ' +
     '(see README.txt for step-by-step setup).</div>';
 } else {
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -79,66 +76,45 @@ function closeModal() {
   document.getElementById('modal-overlay').style.display = 'none';
 }
 
-/* ---------------- base64 helpers (UTF-8 safe) ---------------- */
-function toBase64(str) {
-  return btoa(unescape(encodeURIComponent(str)));
-}
-function fromBase64(b64) {
-  return decodeURIComponent(escape(atob(b64)));
-}
-
-/* ---------------- GitHub Contents API ---------------- */
-function ghHeaders(json) {
-  const h = { Authorization: `Bearer ${GITHUB_TOKEN}`, Accept: 'application/vnd.github+json' };
-  if (json) h['Content-Type'] = 'application/json';
-  return h;
+/* ---------------- GitHub Contents API (via server-side proxy) ----------------
+   The GitHub token never reaches this file or the browser -- it lives only
+   in the Netlify Function's environment. This just calls that function,
+   passing along the current Supabase session so the function can verify
+   we're actually logged in before touching GitHub. */
+async function callProxy(action, payload) {
+  const { data } = await sb.auth.getSession();
+  const sessionToken = data.session && data.session.access_token;
+  const res = await fetch('/.netlify/functions/code-store', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
+    body: JSON.stringify({
+      action,
+      owner: GITHUB_OWNER,
+      repo: GITHUB_REPO,
+      branch: GITHUB_BRANCH,
+      path: GITHUB_SNIPPETS_PATH,
+      ...payload,
+    }),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error || res.statusText);
+  return result;
 }
 
 async function ghListSnippets() {
-  const url = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_SNIPPETS_PATH}?ref=${GITHUB_BRANCH}`;
-  const res = await fetch(url, { headers: ghHeaders(false) });
-  if (res.status === 404) return [];
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || res.statusText);
-  return Array.isArray(data) ? data.filter(f => f.type === 'file') : [];
+  return callProxy('list', {});
 }
 
 async function ghGetSnippet(filename) {
-  const path = `${GITHUB_SNIPPETS_PATH}/${filename}`;
-  const url = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}?ref=${GITHUB_BRANCH}`;
-  const res = await fetch(url, { headers: ghHeaders(false) });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || res.statusText);
-  return { name: data.name, path: data.path, sha: data.sha, text: fromBase64(data.content) };
+  return callProxy('get', { filename });
 }
 
 async function ghSaveSnippet(filename, code, existingSha) {
-  const path = `${GITHUB_SNIPPETS_PATH}/${filename}`;
-  const url = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`;
-  const body = {
-    message: existingSha ? `Update snippet: ${filename}` : `Add snippet: ${filename}`,
-    content: toBase64(code),
-    branch: GITHUB_BRANCH,
-  };
-  if (existingSha) body.sha = existingSha;
-  const res = await fetch(url, { method: 'PUT', headers: ghHeaders(true), body: JSON.stringify(body) });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || res.statusText);
-  return data;
+  return callProxy('save', { filename, code, sha: existingSha || undefined });
 }
 
 async function ghDeleteSnippet(filename, sha) {
-  const path = `${GITHUB_SNIPPETS_PATH}/${filename}`;
-  const url = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`;
-  const res = await fetch(url, {
-    method: 'DELETE',
-    headers: ghHeaders(true),
-    body: JSON.stringify({ message: `Delete snippet: ${filename}`, sha, branch: GITHUB_BRANCH }),
-  });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.message || res.statusText);
-  }
+  await callProxy('delete', { filename, sha });
 }
 
 /* ================= LIST VIEW ================= */
