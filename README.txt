@@ -30,7 +30,7 @@ Layout:
 
 Data lives in a free Supabase project (Postgres database + file storage),
 not in local files. The pages themselves are a plain static site you can
-host anywhere, e.g. Vercel, or just run locally.
+host anywhere, e.g. Netlify, or just run locally.
 
 The whole portal is behind a single shared password, enforced by Supabase
 Auth (a real login, not just a hidden UI element) — so writes are only
@@ -167,11 +167,11 @@ The "snippets" folder in GITHUB_SNIPPETS_PATH doesn't need to exist ahead
 of time — GitHub creates it automatically the first time a snippet is
 saved.
 
-If you deploy this to Vercel (see "DEPLOYING TO VERCEL" below): Vercel
+If you deploy this to Netlify (see "DEPLOYING TO NETLIFY" below): Netlify
 only serves what's in the git repo, so config.local.js (gitignored) won't
 be there by default. To make Code Store work on the deployed URL too,
-see "Code Store on Vercel" in that section — it generates config.local.js
-at build time from a Vercel Environment Variable instead of from git.
+see "Code Store on Netlify" in that section — it generates config.local.js
+at build time from a Netlify Environment Variable instead of from git.
 
 
 USING THE CODE STORE TOOL
@@ -222,9 +222,9 @@ You can register the card before or after building the tool — an
 unbuilt link just 404s until the folder exists.
 
 
-SHARING WITHOUT DEPLOYING (Vercel/GitHub not available to you)
+SHARING WITHOUT DEPLOYING (Netlify/GitHub not available to you)
 ------------------------------------------------------------------
-If you can't install Git/Node or use Vercel/GitHub (e.g. restricted
+If you can't install Git/Node or use Netlify/GitHub (e.g. restricted
 work machine), you don't need them. Run the app locally
 (see "RUNNING IT LOCALLY" above), open a project in the Widget Scenario
 Specs tool, and click "Download PDF" — that produces a normal PDF file
@@ -233,14 +233,20 @@ in Supabase, so you can keep editing and re-export an updated PDF any
 time.
 
 
-DEPLOYING TO VERCEL (optional — only if you want a live shareable link)
+DEPLOYING TO NETLIFY (optional — only if you want a live shareable link)
 ---------------------------------------------------------------------------
-1. Install Vercel CLI once:  npm i -g vercel
+Easiest: connect the GitHub repo in the Netlify dashboard (Add new site ->
+Import an existing project -> pick this repo). Netlify will read
+netlify.toml automatically (build command `npm run build`, publish
+directory `.`) and deploy on every push to main.
+
+Or via CLI:
+1. Install Netlify CLI once:  npm i -g netlify-cli
 2. Make sure config.js has your real Supabase URL/key/login email filled
-   in (see setup steps above) — Vercel just serves these static files,
+   in (see setup steps above) — Netlify just serves these static files,
    Supabase is the backend.
-3. From this folder, run:    vercel
-4. Follow the prompts (first time it'll ask to log in / link a project).
+3. From this folder, run:    netlify deploy --prod
+4. Follow the prompts (first time it'll ask to log in / link a site).
 5. You'll get a shareable URL. Log in, open a project, click "Share",
    and send that per-project link.
 
@@ -248,20 +254,21 @@ Since the data lives in Supabase (not in files), you generally don't
 need to redeploy after adding projects/scenarios/media — only redeploy
 if you change any of the .html/.js/.css files.
 
-Code Store on Vercel (optional):
+Code Store on Netlify (optional):
 Code Store's GitHub token deliberately isn't in git (see "ONE-TIME SETUP:
-CODE STORE" above), so a plain Vercel deploy won't have it and Code Store
-will show "Not configured yet" on the live URL. To fix that:
-1. Vercel dashboard -> your project -> Settings -> Environment Variables.
+CODE STORE" above), so a plain Netlify deploy won't have it and Code
+Store will show "Not configured yet" on the live URL. To fix that:
+1. Netlify dashboard -> your site -> Site configuration -> Environment
+   variables.
 2. Add one named exactly GITHUB_TOKEN, value = your fine-grained token,
-   scoped to whichever environments you want (Production/Preview).
-3. Redeploy (Deployments -> ... -> Redeploy, or `vercel --prod` again).
-   package.json + vercel.json in this project already tell Vercel to run
-   generate-config-local.js during the build, which turns that
+   scoped to whichever contexts you want (Production/Deploy previews).
+3. Redeploy (Deploys -> Trigger deploy, or push a commit).
+   package.json + netlify.toml in this project already tell Netlify to
+   run generate-config-local.js during the build, which turns that
    environment variable into config.local.js for that deploy only — it's
    never written back into git.
 If you skip this, everything else (the portal, Widget Scenario Specs)
-still works fine on Vercel; only Code Store needs this extra step.
+still works fine on Netlify; only Code Store needs this extra step.
 
 
 LEGACY FILES
