@@ -68,6 +68,8 @@ function showDetailView() {
     if (codeTabBtn) codeTabBtn.style.display = 'none';
     const copyBtn = document.getElementById('copy-btn');
     if (copyBtn) copyBtn.style.display = 'none';
+    const downloadBtn = document.getElementById('download-btn');
+    if (downloadBtn) downloadBtn.style.display = 'none';
   }
 }
 
@@ -490,6 +492,20 @@ function copyCurrentSnippet() {
   navigator.clipboard.writeText(currentSnippet.code).then(() => toast('Copied to clipboard'));
 }
 
+function downloadCurrentSnippet() {
+  if (!currentSnippet) return;
+  const baseName = (currentSnippet.filename || 'snippet').replace(/\.[^./\\]+$/, '');
+  const blob = new Blob([currentSnippet.code], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = baseName + '.html';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 /* ---------------- static button wiring ---------------- */
 
 function wireStaticButtons() {
@@ -497,6 +513,7 @@ function wireStaticButtons() {
   if (byId('new-snippet-btn')) byId('new-snippet-btn').onclick = openNewSnippetModal;
   if (byId('back-btn')) byId('back-btn').onclick = () => { location.href = location.pathname; };
   if (byId('copy-btn')) byId('copy-btn').onclick = copyCurrentSnippet;
+  if (byId('download-btn')) byId('download-btn').onclick = downloadCurrentSnippet;
   if (byId('share-btn')) byId('share-btn').onclick = shareSnippet;
   if (byId('edit-btn')) byId('edit-btn').onclick = enterEditMode;
   if (byId('edit-cancel')) byId('edit-cancel').onclick = exitEditMode;
