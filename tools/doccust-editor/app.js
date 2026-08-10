@@ -6,7 +6,8 @@ let documents = [];      // list from Supabase (id, title, description, ...)
 let currentDoc = null;    // { id, title, description, ... }
 let blocks = [];          // sections of currentDoc, in sort_order
 let editsByBlock = {};    // blockId -> edits array, newest first (forever, never pruned)
-const openHistory = new Set(); // block ids currently showing their history log
+const openHistory = new Set();  // block ids currently showing their history log
+const expandedBlocks = new Set(); // block ids currently showing full content (collapsed by default)
 
 const configured = SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes('YOUR_SUPABASE');
 
@@ -216,6 +217,12 @@ function blockPending(block) {
   return edits.length > 0 && !edits[0].remark;
 }
 
+function previewText(text) {
+  const clean = (text || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return '(empty)';
+  return clean.length > 140 ? clean.slice(0, 140) + '…' : clean;
+}
+
 function renderBlocks() {
   const list = document.getElementById('block-list');
   const empty = document.getElementById('block-empty');
@@ -234,6 +241,7 @@ function renderBlockCard(block) {
   const edits = editsByBlock[block.id] || [];
   const pending = blockPending(block);
   const historyOpen = openHistory.has(block.id);
+  const expanded = expandedBlocks.has(block.id);
 
   const card = document.createElement('div');
   card.className = 'block-card';
@@ -250,6 +258,7 @@ function renderBlockCard(block) {
   card.innerHTML = `
     <div class="block-head">
       <div class="block-head-left">
+        <button class="expand-toggle" type="button" title="${expanded ? 'Collapse' : 'Expand'}">${expanded ? '▾' : '▸'}</button>
         <h3>${escapeHtml(block.name)}</h3>
         ${badges}
       </div>
@@ -259,11 +268,22 @@ function renderBlockCard(block) {
         <button class="btn btn-sm btn-danger delete-block-btn">Delete</button>
       </div>
     </div>
-    <div class="block-text">${escapeHtml(currentBlockText(block)) || '<em>(empty)</em>'}</div>
-    ${pending ? `<div class="pending-notice">This section has an edit awaiting its impact remark. <button class="btn btn-sm add-remark-btn" data-edit-id="${edits[0].id}">Add Remark</button></div>` : ''}
-    ${!block.locked && edits.length ? `<button class="btn btn-sm history-toggle">${historyOpen ? 'Hide' : 'Show'} History (${edits.length})</button>` : ''}
-    <div class="history-list" style="display:${historyOpen ? '' : 'none'};"></div>
+    ${!expanded ? `<div class="block-preview">${escapeHtml(previewText(currentBlockText(block)))}</div>` : ''}
+    ${expanded ? `
+      <div class="block-text">${escapeHtml(currentBlockText(block)) || '<em>(empty)</em>'}</div>
+      ${pending ? `<div class="pending-notice">This section has an edit awaiting its impact remark. <button class="btn btn-sm add-remark-btn" data-edit-id="${edits[0].id}">Add Remark</button></div>` : ''}
+      ${!block.locked && edits.length ? `<button class="btn btn-sm history-toggle">${historyOpen ? 'Hide' : 'Show'} History (${edits.length})</button>` : ''}
+      <div class="history-list" style="display:${historyOpen ? '' : 'none'};"></div>
+    ` : ''}
   `;
+
+  const toggleExpand = () => {
+    if (expanded) expandedBlocks.delete(block.id); else expandedBlocks.add(block.id);
+    renderBlocks();
+  };
+  card.querySelector('.expand-toggle').onclick = toggleExpand;
+  const preview = card.querySelector('.block-preview');
+  if (preview) preview.onclick = toggleExpand;
 
   card.querySelector('.edit-text-btn').onclick = () => {
     if (block.locked) openEditLockedTextModal(block);
@@ -271,6 +291,9 @@ function renderBlockCard(block) {
   };
   card.querySelector('.settings-btn').onclick = () => openEditSectionModal(block);
   card.querySelector('.delete-block-btn').onclick = () => deleteBlock(block);
+
+  if (!expanded) return card;
+
   const remarkBtn = card.querySelector('.add-remark-btn');
   if (remarkBtn) remarkBtn.onclick = () => openRemarkModal(block, edits[0]);
   const histToggle = card.querySelector('.history-toggle');
