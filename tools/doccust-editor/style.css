@@ -1,0 +1,105 @@
+/* Shared tokens/buttons/forms/modal/toast/login live in ../../theme.css */
+
+/* ---------- list view ---------- */
+#list-view { max-width: 980px; margin: 0 auto; padding: 48px 24px 80px; }
+#list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 28px;
+  gap: 16px;
+}
+#list-header a.link-btn { display: inline-block; margin-bottom: 10px; }
+#list-header h1 { margin: 0 0 4px; font-size: 26px; }
+#list-header .sub { margin: 0; color: var(--ink-soft); font-size: 14px; max-width: 60ch; }
+.header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+#doc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+.doc-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px;
+  cursor: pointer;
+}
+.doc-card:hover { border-color: var(--accent); box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+.doc-card h3 { margin: 0 0 6px; font-size: 15px; }
+.doc-card p { margin: 0 0 8px; font-size: 13px; color: var(--ink-soft); line-height: 1.5; }
+.doc-card .meta { font-size: 11.5px; color: var(--ink-soft); }
+
+/* ---------- detail view ---------- */
+#detail-view { max-width: 860px; margin: 0 auto; padding: 40px 24px 100px; }
+#detail-header { margin-bottom: 24px; }
+#detail-header .link-btn { display: inline-block; margin-bottom: 14px; }
+#detail-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+#doc-title { font-size: 22px; margin: 0 0 4px; }
+#doc-desc { margin: 0; }
+#doc-desc:empty { display: none; }
+
+.field-hint { font-size: 11.5px; color: var(--ink-soft); margin: 6px 0 0; line-height: 1.5; }
+.doc-text-input { min-height: 220px; }
+
+/* ---------- section (block) cards ---------- */
+#block-list { display: flex; flex-direction: column; gap: 16px; }
+.block-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.block-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.block-head-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.block-head h3 { margin: 0; font-size: 15px; }
+.badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 20px;
+}
+.badge-locked { background: var(--line); color: var(--ink-soft); }
+.badge-editable { background: var(--accent-soft); color: var(--accent); }
+.badge-pending { background: #fbeecb; color: #8a6314; }
+.block-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.block-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 10px 12px;
+  background: var(--bg);
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.pending-notice {
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: #8a6314;
+  background: #fbeecb;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.history-toggle { margin-top: 10px; }
+
+.history-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.history-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+.history-item.restorable { border-color: var(--accent); }
+.history-item .h-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.history-item .h-meta { font-size: 11px; color: var(--ink-soft); }
+.history-item .h-text { white-space: pre-wrap; word-break: break-word; margin-bottom: 6px; }
+.history-item .h-remark { font-size: 12.5px; color: var(--ink-soft); border-top: 1px dashed var(--line); padding-top: 6px; margin-top: 4px; }
+.history-item .h-remark strong { color: var(--ink); }
+.history-item .h-actions { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }

@@ -5,12 +5,16 @@ WHAT THIS IS NOW
 -----------------
 This is a password-protected portal that can hold multiple, unrelated
 tools. Open it, log in once, and you land on a menu of tool cards. There
-are two so far:
+are three so far:
   - "Widget Scenario Specs" (documents widget/feature UX scenarios —
     trigger / message / popup / backend — for manager review, with
     screenshots or short videos, PDF export, and share links).
   - "Code Store" (paste code, preview it with syntax highlighting, and
     save it as a snippet).
+  - "DocCust_Editior" (documents made of locked and editable sections;
+    every edit to an editable section is kept forever along with a
+    required retrospective remark on its real-world impact, and the
+    last 2 edits per section can be restored with one click).
 You can add more tools later; see "ADDING A NEW TOOL" below.
 
 Layout:
@@ -25,6 +29,8 @@ Layout:
   tools/widget-scenario-spec/         -> Widget Scenario Specs, self-contained
                                           (index.html, app.js, style.css)
   tools/code-store/                   -> Code Store, self-contained
+                                          (index.html, app.js, style.css)
+  tools/doccust-editor/               -> DocCust_Editior, self-contained
                                           (index.html, app.js, style.css)
 
 Data lives in a free Supabase project (Postgres database + file storage),
@@ -169,6 +175,43 @@ already show up on the portal menu.
   normal-use convenience.)
 - "Edit" lets you change the filename and/or code; saving updates the row
   in Supabase. "Delete" removes the snippet and any remarks on it.
+
+
+USING THE DOCCUST_EDITIOR TOOL
+----------------------------------
+- You'll see a grid of documents. Click "+ New Document" to create one
+  (title + optional description).
+- Click a document card to open it. Inside a document:
+  - "+ Add Section" creates a section ("block") with a name, an initial
+    piece of text, and a Locked/Editable toggle.
+    - Locked sections are fixed reference text: "Edit" changes the text
+      directly, no history is kept, no remark is ever asked for. Use
+      this for parts that shouldn't be tracked (headings, prices, terms
+      that don't change often).
+    - Editable sections are where the tracking happens (see below).
+  - "Settings" on a section lets you rename it or flip Locked/Editable.
+    Switching to Locked freezes whatever text is currently showing;
+    switching to Editable starts a fresh edit history from that text.
+  - "Delete" on a section removes it and its entire history.
+- On an editable section:
+  - Every saved edit is appended to that section's history forever —
+    nothing is ever deleted. "Show History" reveals the full log,
+    newest first, each entry showing its text and its remark (or "No
+    remark yet" if one hasn't been written).
+  - You can't make a new edit until the section's most recent edit has
+    a remark. The "Edit" button is disabled and a banner appears asking
+    for the remark first — click "Add Remark" (on the banner or on the
+    current entry in History) to write it. The remark is meant to
+    capture the real-world impact once you actually know it, which may
+    be written well after the edit itself, but it has to exist before
+    you're allowed to edit that section again.
+  - Only the 2 most recent history entries are one-click restorable —
+    the "Restore" button appears on the second-most-recent entry (the
+    one just before the current text). Older entries stay fully visible
+    with their text and remark, just without a Restore button; you'd
+    copy that text back in manually via a fresh edit if you needed it.
+  - Restoring counts as a new edit itself: it's appended to the history
+    and needs its own remark before the section can be edited again.
 
 
 ADDING A NEW TOOL

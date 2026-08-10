@@ -206,6 +206,87 @@ select 'Code Store',
        1
 where not exists (select 1 from tools where href = 'tools/code-store/index.html');
 
+-- DocCust_Editor tool: documents made of named sections ("blocks"). A block
+-- is either locked (fixed reference text, edited freely with no tracking)
+-- or editable, in which case every edit to it is appended forever to
+-- doccust_edits -- never deleted -- but only the two most recent edits per
+-- block are meant to be one-click restorable (older ones stay visible,
+-- read-only). App-level logic (not a DB constraint) blocks a new edit on a
+-- block until the block's latest edit has a remark filled in: the remark
+-- records the real-world impact of that edit, often written days later once
+-- it's actually known, so it's captured before the next edit rather than at
+-- save time.
+create table if not exists doccust_documents (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists doccust_blocks (
+  id uuid primary key default gen_random_uuid(),
+  document_id uuid not null references doccust_documents(id) on delete cascade,
+  name text not null,
+  locked boolean not null default false,
+  locked_text text not null default '',
+  sort_order int not null default 0,
+  created_at timestamptz not null default now()
+);
+
+-- Append-only: rows are inserted and (only to fill in `remark`) updated,
+-- never deleted individually -- the full history survives even once a
+-- block has more than 2 edits, only the app UI limits one-click "Restore"
+-- to the 2 most recent rows per block.
+create table if not exists doccust_edits (
+  id uuid primary key default gen_random_uuid(),
+  block_id uuid not null references doccust_blocks(id) on delete cascade,
+  content text not null default '',
+  remark text,
+  remarked_at timestamptz,
+  restored_from_edit_id uuid references doccust_edits(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table doccust_documents enable row level security;
+alter table doccust_blocks enable row level security;
+alter table doccust_edits enable row level security;
+
+drop policy if exists "public read" on doccust_documents;
+drop policy if exists "authenticated insert" on doccust_documents;
+drop policy if exists "authenticated update" on doccust_documents;
+drop policy if exists "authenticated delete" on doccust_documents;
+create policy "public read" on doccust_documents for select using (true);
+create policy "authenticated insert" on doccust_documents for insert with check (auth.role() = 'authenticated');
+create policy "authenticated update" on doccust_documents for update using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "authenticated delete" on doccust_documents for delete using (auth.role() = 'authenticated');
+
+drop policy if exists "public read" on doccust_blocks;
+drop policy if exists "authenticated insert" on doccust_blocks;
+drop policy if exists "authenticated update" on doccust_blocks;
+drop policy if exists "authenticated delete" on doccust_blocks;
+create policy "public read" on doccust_blocks for select using (true);
+create policy "authenticated insert" on doccust_blocks for insert with check (auth.role() = 'authenticated');
+create policy "authenticated update" on doccust_blocks for update using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "authenticated delete" on doccust_blocks for delete using (auth.role() = 'authenticated');
+
+drop policy if exists "public read" on doccust_edits;
+drop policy if exists "authenticated insert" on doccust_edits;
+drop policy if exists "authenticated update" on doccust_edits;
+drop policy if exists "authenticated delete" on doccust_edits;
+create policy "public read" on doccust_edits for select using (true);
+create policy "authenticated insert" on doccust_edits for insert with check (auth.role() = 'authenticated');
+create policy "authenticated update" on doccust_edits for update using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "authenticated delete" on doccust_edits for delete using (auth.role() = 'authenticated');
+
+insert into tools (name, description, icon, href, sort_order)
+select 'DocCust_Editior',
+       'Section-locked document editor: track every edit and its retrospective impact remark, restore either of the last 2 edits per section.',
+       '📄',
+       'tools/doccust-editor/index.html',
+       2
+where not exists (select 1 from tools where href = 'tools/doccust-editor/index.html');
+
 insert into storage.buckets (id, name, public)
 values ('media', 'media', true)
 on conflict (id) do nothing;

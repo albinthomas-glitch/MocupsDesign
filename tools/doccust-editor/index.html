@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DocCust_Editior</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- LIST VIEW: all documents -->
+<div id="list-view" style="display:none;">
+  <header id="list-header">
+    <div>
+      <a href="../../index.html" class="link-btn">&larr; Tools Menu</a>
+      <h1>DocCust_Editior</h1>
+      <p class="sub">Documents with locked and editable sections. Every edit to an editable section is kept forever, but only the last 2 edits per section can be restored with one click.</p>
+    </div>
+    <div class="header-actions">
+      <button id="new-doc-btn" class="btn btn-primary">+ New Document</button>
+    </div>
+  </header>
+  <div id="doc-grid"></div>
+  <div id="list-empty" class="empty-state" style="display:none;">
+    No documents yet. Click "+ New Document" to add the first one.
+  </div>
+</div>
+
+<!-- DETAIL VIEW: one document -->
+<div id="detail-view" style="display:none;">
+  <header id="detail-header">
+    <button id="back-btn" class="link-btn">&larr; All Documents</button>
+    <div id="detail-title-row">
+      <div>
+        <h1 id="doc-title">Loading&hellip;</h1>
+        <p id="doc-desc" class="sub"></p>
+      </div>
+      <div class="header-actions">
+        <button id="add-section-btn" class="btn btn-sm">+ Add Section</button>
+        <button id="edit-doc-btn" class="btn btn-sm">Edit</button>
+        <button id="delete-doc-btn" class="btn btn-sm btn-danger">Delete</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="block-list"></div>
+  <div id="block-empty" class="empty-state" style="display:none;">
+    No sections yet. Click "+ Add Section" to add the first one.
+  </div>
+</div>
+
+<!-- Generic modal -->
+<div id="modal-overlay" style="display:none;">
+  <div id="modal-box"></div>
+</div>
+
+<div id="toast" style="display:none;"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
