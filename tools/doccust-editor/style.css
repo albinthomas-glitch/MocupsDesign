@@ -110,6 +110,19 @@
   padding: 8px 10px;
 }
 
+.remark-picker { margin-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.remark-picker label { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+.remark-picker select {
+  font: inherit;
+  font-size: 12.5px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  max-width: 100%;
+}
+
 .history-toggle { margin-top: 10px; }
 
 .history-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
@@ -126,3 +139,41 @@
 .history-item .h-remark { font-size: 12.5px; color: var(--ink-soft); border-top: 1px dashed var(--line); padding-top: 6px; margin-top: 4px; }
 .history-item .h-remark strong { color: var(--ink); }
 .history-item .h-actions { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+
+/* ---------- PDF export (print) ---------- */
+#print-area { display: none; }
+
+@media print {
+  body.printing > *:not(#print-area) { display: none !important; }
+  body.printing #print-area { display: block !important; }
+
+  .print-doc { font-family: -apple-system, 'Segoe UI', sans-serif; color: #1c2126; max-width: 720px; margin: 0 auto; }
+  .print-doc h1 { font-size: 20px; margin: 0 0 20px; }
+  .print-section { page-break-inside: avoid; margin-bottom: 20px; }
+  .print-section h2 { font-size: 14.5px; margin: 0 0 6px; }
+  .print-status {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #5a6470;
+    font-weight: 600;
+    margin-left: 8px;
+  }
+  .print-content {
+    font-size: 12.5px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    border-left: 2px solid #e3e6ea;
+    padding-left: 10px;
+    margin-bottom: 8px;
+  }
+  .print-history h4 {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #2f6f4f;
+    margin: 0 0 4px;
+  }
+  .print-history ul { margin: 0; padding-left: 18px; }
+  .print-history li { font-size: 11.5px; line-height: 1.5; margin-bottom: 4px; }
+}

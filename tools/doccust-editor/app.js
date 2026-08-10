@@ -214,7 +214,11 @@ function currentBlockText(block) {
 function blockPending(block) {
   if (block.locked) return false;
   const edits = editsByBlock[block.id] || [];
-  return edits.length > 0 && !edits[0].remark;
+  // The first edit is the initial upload -- nothing to report the impact of
+  // yet, so it never blocks. Gating starts from the second edit onward: its
+  // remark must be filled in before a third edit is allowed, and so on.
+  if (edits.length < 2) return false;
+  return !edits[0].remark;
 }
 
 function previewText(text) {
@@ -272,6 +276,15 @@ function renderBlockCard(block) {
     ${expanded ? `
       <div class="block-text">${escapeHtml(currentBlockText(block)) || '<em>(empty)</em>'}</div>
       ${pending ? `<div class="pending-notice">This section has an edit awaiting its impact remark. <button class="btn btn-sm add-remark-btn" data-edit-id="${edits[0].id}">Add Remark</button></div>` : ''}
+      ${!block.locked && edits.length ? `
+        <div class="remark-picker">
+          <label>Add / edit remark for</label>
+          <select class="remark-select">
+            ${edits.map((e, i) => `<option value="${e.id}">${i === 0 ? 'Current' : 'Edit'} · ${escapeHtml(new Date(e.created_at).toLocaleString())}${e.remark ? ' (has remark)' : ' (no remark)'}</option>`).join('')}
+          </select>
+          <button class="btn btn-sm remark-picker-btn">Open</button>
+        </div>
+      ` : ''}
       ${!block.locked && edits.length ? `<button class="btn btn-sm history-toggle">${historyOpen ? 'Hide' : 'Show'} History (${edits.length})</button>` : ''}
       <div class="history-list" style="display:${historyOpen ? '' : 'none'};"></div>
     ` : ''}
@@ -296,6 +309,14 @@ function renderBlockCard(block) {
 
   const remarkBtn = card.querySelector('.add-remark-btn');
   if (remarkBtn) remarkBtn.onclick = () => openRemarkModal(block, edits[0]);
+  const pickerBtn = card.querySelector('.remark-picker-btn');
+  if (pickerBtn) {
+    pickerBtn.onclick = () => {
+      const select = card.querySelector('.remark-select');
+      const chosen = edits.find(e => e.id === select.value);
+      if (chosen) openRemarkModal(block, chosen);
+    };
+  }
   const histToggle = card.querySelector('.history-toggle');
   if (histToggle) {
     histToggle.onclick = () => {
@@ -512,12 +533,77 @@ async function restoreEdit(block, edit) {
   await loadDocument(currentDoc.id);
 }
 
+/* ---------------- PDF export ---------------- */
+
+function openExportPdfModal() {
+  openModal(`
+    <h3>Export PDF</h3>
+    <div class="field">
+      <label><input type="checkbox" id="f-include-locked" checked> Include locked sections</label>
+      <p class="field-hint">Uncheck to leave locked sections out of the export entirely.</p>
+    </div>
+    <div class="form-actions">
+      <button class="btn" id="f-cancel">Cancel</button>
+      <button class="btn btn-primary" id="f-export">Export</button>
+    </div>
+  `, (box) => {
+    box.querySelector('#f-cancel').onclick = closeModal;
+    box.querySelector('#f-export').onclick = () => {
+      const includeLocked = box.querySelector('#f-include-locked').checked;
+      closeModal();
+      exportPdf(includeLocked);
+    };
+  });
+}
+
+function buildPrintHtml(includeLocked) {
+  let html = '<div class="print-doc">';
+  html += `<h1>${escapeHtml(currentDoc.title)}</h1>`;
+
+  blocks.forEach(block => {
+    if (block.locked && !includeLocked) return;
+    const edits = editsByBlock[block.id] || [];
+
+    html += '<div class="print-section">';
+    html += `<h2>${escapeHtml(block.name)}<span class="print-status">${block.locked ? 'Locked' : 'Editable'}</span></h2>`;
+    html += `<div class="print-content">${escapeHtml(currentBlockText(block)) || '(empty)'}</div>`;
+
+    if (!block.locked && edits.length) {
+      html += '<div class="print-history"><h4>Edit History</h4><ul>';
+      edits.forEach((e, i) => {
+        const when = new Date(e.created_at).toLocaleString();
+        const label = i === 0 ? 'Current' : 'Edit';
+        const remark = e.remark ? escapeHtml(e.remark) : 'No remark yet';
+        html += `<li><strong>${label} · ${escapeHtml(when)}:</strong> "${escapeHtml(previewText(e.content))}" — Impact: ${remark}</li>`;
+      });
+      html += '</ul></div>';
+    }
+    html += '</div>';
+  });
+
+  html += '</div>';
+  return html;
+}
+
+function exportPdf(includeLocked) {
+  if (!currentDoc) return;
+  const area = document.getElementById('print-area');
+  area.innerHTML = buildPrintHtml(includeLocked);
+  document.body.classList.add('printing');
+  window.print();
+}
+
+window.addEventListener('afterprint', () => {
+  document.body.classList.remove('printing');
+});
+
 /* ---------------- static button wiring ---------------- */
 
 function wireStaticButtons() {
   const byId = (id) => document.getElementById(id);
   if (byId('new-doc-btn')) byId('new-doc-btn').onclick = openNewDocModal;
   if (byId('back-btn')) byId('back-btn').onclick = () => { location.href = location.pathname; };
+  if (byId('pdf-btn')) byId('pdf-btn').onclick = openExportPdfModal;
   if (byId('add-section-btn')) byId('add-section-btn').onclick = openAddSectionModal;
   if (byId('edit-doc-btn')) byId('edit-doc-btn').onclick = openEditDocModal;
   if (byId('delete-doc-btn')) byId('delete-doc-btn').onclick = deleteCurrentDoc;
