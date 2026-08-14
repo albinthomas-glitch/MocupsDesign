@@ -8,6 +8,7 @@ let currentSnippet = null; // { id, filename, code, created_at, updated_at }
 let comments = [];         // review remarks pinned on the current snippet's preview
 let activeTab = 'code';    // 'code' | 'preview'
 let armed = false;         // true while "+ Add Remark" is waiting for the next preview click
+let previewDevice = 'desktop'; // 'desktop' | 'mobile' -- simulated preview viewport width
 
 const configured = SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes('YOUR_SUPABASE');
 
@@ -167,6 +168,8 @@ async function loadSnippet(id) {
     return;
   }
   currentSnippet = data;
+  previewDevice = 'desktop';
+  setDevice('desktop');
   renderSnippet();
 }
 
@@ -294,6 +297,13 @@ window.addEventListener('message', (e) => {
     openNewCommentPopover(e.data.xPercent, e.data.yPercent, e.data.widthPercent, e.data.heightPercent, e.data.label);
   }
 });
+
+function setDevice(device) {
+  previewDevice = device;
+  document.querySelectorAll('.device-btn').forEach(b => b.classList.toggle('active', b.dataset.device === device));
+  const box = document.getElementById('preview-frame-box');
+  if (box) box.classList.toggle('device-mobile', device === 'mobile');
+}
 
 function setArmed(next) {
   armed = next;
@@ -520,6 +530,9 @@ function wireStaticButtons() {
   if (byId('edit-save')) byId('edit-save').onclick = saveEdit;
   if (byId('delete-btn')) byId('delete-btn').onclick = deleteCurrentSnippet;
   if (byId('add-remark-btn')) byId('add-remark-btn').onclick = toggleArmRemark;
+  document.querySelectorAll('.device-btn').forEach(b => {
+    b.onclick = () => setDevice(b.dataset.device);
+  });
   document.querySelectorAll('.view-tab').forEach(t => {
     t.onclick = () => { t.dataset.mode === 'preview' ? showPreviewTab() : showCodeTab(); };
   });

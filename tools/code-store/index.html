@@ -56,12 +56,18 @@
   <div id="preview-view" style="display:none;">
     <div id="preview-toolbar">
       <button id="add-remark-btn" class="btn btn-sm">+ Add Remark</button>
+      <div class="device-toggle" id="device-toggle">
+        <button type="button" class="device-btn active" data-device="desktop">🖥️ Desktop</button>
+        <button type="button" class="device-btn" data-device="mobile">📱 Mobile</button>
+      </div>
       <span id="armed-hint" style="display:none;">Click an element in the preview to place your remark, or Cancel.</span>
     </div>
-    <div id="preview-frame-box">
-      <iframe id="preview-frame" sandbox="allow-scripts"></iframe>
-      <div id="pin-layer"></div>
-      <div id="comment-popover" style="display:none;"></div>
+    <div id="preview-frame-outer">
+      <div id="preview-frame-box">
+        <iframe id="preview-frame" sandbox="allow-scripts"></iframe>
+        <div id="pin-layer"></div>
+        <div id="comment-popover" style="display:none;"></div>
+      </div>
     </div>
     <div id="comment-list"></div>
   </div>

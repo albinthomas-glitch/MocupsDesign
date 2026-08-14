@@ -92,17 +92,44 @@
 #preview-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 #armed-hint { font-size: 12.5px; color: var(--accent); font-weight: 600; }
 
+.device-toggle { display: flex; gap: 2px; border: 1px solid var(--line); border-radius: 7px; padding: 2px; }
+.device-btn {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.device-btn:hover { color: var(--ink); }
+.device-btn.active { color: #fff; background: var(--accent); }
+
+#preview-frame-outer { display: flex; justify-content: center; }
+
 #preview-frame-box {
   position: relative;
   border: 1px solid var(--line);
   border-radius: 10px;
   overflow: hidden;
   background: #fff;
+  width: 100%;
+  transition: width 0.2s ease;
 }
 #preview-frame-box.armed {
   border-color: var(--accent);
   outline: 2px dashed var(--accent);
   outline-offset: -1px;
+}
+#preview-frame-box.device-mobile {
+  width: 390px;
+  max-width: 100%;
+  border-width: 8px;
+  border-color: #1c2126;
+  border-radius: 28px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.18);
 }
 #preview-frame { display: block; width: 100%; min-height: 200px; border: none; }
 #pin-layer { position: absolute; inset: 0; pointer-events: none; }
