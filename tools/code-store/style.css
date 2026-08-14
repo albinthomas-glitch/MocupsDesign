@@ -41,7 +41,8 @@
 }
 
 /* ---------- detail view ---------- */
-#detail-view { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+#detail-view { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; transition: max-width 0.2s ease; }
+#detail-view.preview-wide { max-width: min(1600px, calc(100vw - 48px)); }
 #detail-header { margin-bottom: 18px; }
 #detail-header .link-btn { display: inline-block; margin-bottom: 14px; }
 #detail-title-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }

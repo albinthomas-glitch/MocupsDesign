@@ -206,6 +206,7 @@ function showCodeTab() {
   document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === 'code'));
   document.getElementById('code-view').style.display = 'block';
   document.getElementById('preview-view').style.display = 'none';
+  document.getElementById('detail-view').classList.remove('preview-wide');
   closeCommentPopover();
   setArmed(false);
 }
@@ -215,6 +216,7 @@ function showPreviewTab() {
   document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === 'preview'));
   document.getElementById('code-view').style.display = 'none';
   document.getElementById('preview-view').style.display = 'block';
+  document.getElementById('detail-view').classList.add('preview-wide');
   renderPreviewFrame();
   loadComments();
 }
