@@ -142,7 +142,7 @@ async function loadPostList() {
     .order('created_at', { ascending: false });
   if (error) {
     document.getElementById('post-rows').innerHTML =
-      `<tr><td colspan="8" class="empty-state">Could not load posts: ${escapeHtml(error.message)}</td></tr>`;
+      `<tr><td colspan="9" class="empty-state">Could not load posts: ${escapeHtml(error.message)}</td></tr>`;
     return;
   }
   posts = data || [];
@@ -179,7 +179,7 @@ function renderPostList() {
   tableWrap.style.display = '';
 
   if (!list.length) {
-    rows.innerHTML = '<tr><td colspan="8" class="muted-cell">No posts match these filters.</td></tr>';
+    rows.innerHTML = '<tr><td colspan="9" class="muted-cell">No posts match these filters.</td></tr>';
     return;
   }
 
@@ -203,7 +203,9 @@ function renderPostList() {
       <td class="num">${m ? fmtNum(m.impressions) : '—'}</td>
       <td class="num">${m ? fmtNum(m.clicks) : '—'}</td>
       <td class="num">${fmtCtr(m)}</td>
+      <td><button class="btn btn-sm row-share">Share</button></td>
     `;
+    tr.querySelector('.row-share').onclick = (e) => { e.stopPropagation(); copyShareLink(p.id); };
     tr.onclick = () => { location.href = '?post=' + encodeURIComponent(p.id); };
     rows.appendChild(tr);
   });
@@ -466,8 +468,8 @@ async function deleteCurrentPost() {
   location.href = location.pathname;
 }
 
-function sharePost() {
-  const url = location.origin + location.pathname + '?post=' + encodeURIComponent(currentPost.id) + '&mode=view';
+function copyShareLink(postId) {
+  const url = location.origin + location.pathname + '?post=' + encodeURIComponent(postId) + '&mode=view';
   if (navigator.clipboard) {
     navigator.clipboard.writeText(url).then(() => toast('Share link copied to clipboard'));
   } else {
@@ -594,7 +596,7 @@ function wireStaticButtons() {
   byId('filter-platform').onchange = renderPostList;
   byId('filter-status').onchange = renderPostList;
   byId('back-btn').onclick = () => { location.href = location.pathname; };
-  byId('share-btn').onclick = sharePost;
+  byId('share-btn').onclick = () => copyShareLink(currentPost.id);
   byId('edit-btn').onclick = openEditPostModal;
   byId('delete-btn').onclick = deleteCurrentPost;
   byId('add-metrics-btn').onclick = () => openMetricsModal(null);
