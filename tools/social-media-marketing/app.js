@@ -477,20 +477,30 @@ function sharePost() {
 
 /* ---------------- media (one image or video per post) ---------------- */
 
+// Supabase Storage rejects keys with many special/non-ASCII characters
+// ("Invalid key"), which screenshot filenames often contain -- keep only
+// safe characters in the stored name.
+function safeFileName(name) {
+  const dot = name.lastIndexOf('.');
+  const base = (dot > 0 ? name.slice(0, dot) : name).replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'file';
+  const ext = dot > 0 ? name.slice(dot + 1).replace(/[^A-Za-z0-9]/g, '').toLowerCase() : '';
+  return ext ? `${base}.${ext}` : base;
+}
+
 async function uploadMedia(post, file) {
   const isVideo = file.type.startsWith('video/');
-  const path = `smm/${post.id}/${crypto.randomUUID()}-${file.name}`;
+  const path = `smm/${post.id}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
 
   toast('Uploading…');
-  const { error: upErr } = await sb.storage.from('media').upload(path, file);
-  if (upErr) { toast('Upload failed: ' + upErr.message); return false; }
+  const { error: upErr } = await sb.storage.from('media').upload(path, file, { contentType: file.type || undefined });
+  if (upErr) { alert('Upload failed: ' + upErr.message); return false; }
 
   const { error } = await sb.from('smm_posts').update({
     media_path: path,
     media_type: isVideo ? 'video' : 'image',
     updated_at: new Date().toISOString(),
   }).eq('id', post.id);
-  if (error) { toast('Could not save media: ' + error.message); return false; }
+  if (error) { alert('Could not save media: ' + error.message); return false; }
 
   // Replacing: drop the old file only once the new one is saved.
   if (post.media_path) await sb.storage.from('media').remove([post.media_path]);

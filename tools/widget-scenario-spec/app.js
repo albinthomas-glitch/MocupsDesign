@@ -598,13 +598,23 @@ async function deleteScenario(id) {
 
 /* ---------------- media ---------------- */
 
+// Supabase Storage rejects keys with many special/non-ASCII characters
+// ("Invalid key"), which screenshot filenames often contain -- keep only
+// safe characters in the stored name.
+function safeFileName(name) {
+  const dot = name.lastIndexOf('.');
+  const base = (dot > 0 ? name.slice(0, dot) : name).replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'file';
+  const ext = dot > 0 ? name.slice(dot + 1).replace(/[^A-Za-z0-9]/g, '').toLowerCase() : '';
+  return ext ? `${base}.${ext}` : base;
+}
+
 async function uploadMedia(scenarioId, file, section) {
   const isVideo = file.type.startsWith('video/');
-  const path = `${scenarioId}/${crypto.randomUUID()}-${file.name}`;
+  const path = `${scenarioId}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
 
   toast('Uploading…');
-  const { error: upErr } = await sb.storage.from('media').upload(path, file);
-  if (upErr) { toast('Upload failed: ' + upErr.message); return; }
+  const { error: upErr } = await sb.storage.from('media').upload(path, file, { contentType: file.type || undefined });
+  if (upErr) { alert('Upload failed: ' + upErr.message); return; }
 
   const sc = currentProject.categories.flatMap(c => c.scenarios).find(s => s.id === scenarioId);
   const { error } = await sb.from('media').insert({
