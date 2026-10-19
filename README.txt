@@ -5,7 +5,7 @@ WHAT THIS IS NOW
 -----------------
 This is a password-protected portal that can hold multiple, unrelated
 tools. Open it, log in once, and you land on a menu of tool cards. There
-are three so far:
+are four so far:
   - "Widget Scenario Specs" (documents widget/feature UX scenarios —
     trigger / message / popup / backend — for manager review, with
     screenshots or short videos, PDF export, and share links).
@@ -15,6 +15,9 @@ are three so far:
     every edit to an editable section is kept forever along with a
     required retrospective remark on its real-world impact, and the
     last 2 edits per section can be restored with one click).
+  - "Social Media Marketing" (draft posts with content + an image or
+    video, preview and share them, record when they were posted, log
+    impressions/clicks over time, and download everything as Excel).
 You can add more tools later; see "ADDING A NEW TOOL" below.
 
 Layout:
@@ -31,6 +34,8 @@ Layout:
   tools/code-store/                   -> Code Store, self-contained
                                           (index.html, app.js, style.css)
   tools/doccust-editor/               -> DocCust_Editior, self-contained
+                                          (index.html, app.js, style.css)
+  tools/social-media-marketing/       -> Social Media Marketing, self-contained
                                           (index.html, app.js, style.css)
 
 Data lives in a free Supabase project (Postgres database + file storage),
@@ -212,6 +217,37 @@ USING THE DOCCUST_EDITIOR TOOL
     copy that text back in manually via a fresh edit if you needed it.
   - Restoring counts as a new edit itself: it's appended to the history
     and needs its own remark before the section can be edited again.
+
+
+USING THE SOCIAL MEDIA MARKETING TOOL
+-----------------------------------------
+Uses the same Supabase project ("smm_posts" and "smm_metrics" tables from
+supabase-schema.sql; images/videos go in the shared "media" bucket under
+smm/). Re-run supabase-schema.sql once to create the tables and the menu
+card.
+- The main screen lists every post with its platform, status, posted
+  date and latest impressions / clicks / CTR, plus totals at the top.
+  Filter by platform or status.
+- "+ New Post": title, platform, status, caption/content, an optional
+  image or video, "Scheduled for" and "Actually posted at" dates, and the
+  live post URL. Filling in "Actually posted at" marks the post Posted.
+- Click a post to open it:
+  - "Preview" shows it as a feed-style card (caption with #hashtags
+    highlighted, image or playable video).
+  - "Replace media" / "Remove media" change the image or video.
+  - "Share" copies a read-only link (no login) showing just the preview
+    and details -- handy for getting a post approved. Performance numbers
+    are NOT shown on share links.
+  - "+ Log Metrics" records impressions, clicks, likes, comments, shares
+    and a note for a given date. Log again later (e.g. day 1, day 7,
+    day 30) -- every entry is kept, and the newest one is used as the
+    post's current figures. "Edit" on a row fixes or deletes it.
+- "Download Excel" (main screen) saves an .xlsx with two sheets:
+  "Posts" (one row per post with its latest figures and CTR) and
+  "Metrics Log" (every logged entry, oldest first). It exports whatever
+  the platform/status filters currently show.
+- Metrics are entered by hand: copy them from each platform's insights
+  page. Nothing is pulled automatically from Instagram/Facebook/etc.
 
 
 ADDING A NEW TOOL

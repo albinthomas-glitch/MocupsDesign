@@ -287,6 +287,68 @@ select 'DocCust_Editior',
        2
 where not exists (select 1 from tools where href = 'tools/doccust-editor/index.html');
 
+-- Social Media Marketing tool: one row per post (content + one image or
+-- video, stored in the shared "media" bucket under smm/<post id>/), plus a
+-- log of performance snapshots per post. Metrics are appended over time
+-- (e.g. day 1, day 7, day 30) rather than overwritten, so the Excel export
+-- can show how a post grew; the "latest" figures are just the newest row.
+create table if not exists smm_posts (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  platform text not null default 'Instagram',
+  content text not null default '',
+  media_path text,
+  media_type text check (media_type in ('image','video')),
+  status text not null default 'draft' check (status in ('draft','scheduled','posted')),
+  scheduled_at timestamptz,
+  posted_at timestamptz,
+  post_url text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists smm_metrics (
+  id uuid primary key default gen_random_uuid(),
+  post_id uuid not null references smm_posts(id) on delete cascade,
+  recorded_on date not null default current_date,
+  impressions int not null default 0,
+  clicks int not null default 0,
+  likes int not null default 0,
+  comments int not null default 0,
+  shares int not null default 0,
+  note text,
+  created_at timestamptz not null default now()
+);
+
+alter table smm_posts enable row level security;
+alter table smm_metrics enable row level security;
+
+drop policy if exists "public read" on smm_posts;
+drop policy if exists "authenticated insert" on smm_posts;
+drop policy if exists "authenticated update" on smm_posts;
+drop policy if exists "authenticated delete" on smm_posts;
+create policy "public read" on smm_posts for select using (true);
+create policy "authenticated insert" on smm_posts for insert with check (auth.role() = 'authenticated');
+create policy "authenticated update" on smm_posts for update using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "authenticated delete" on smm_posts for delete using (auth.role() = 'authenticated');
+
+drop policy if exists "public read" on smm_metrics;
+drop policy if exists "authenticated insert" on smm_metrics;
+drop policy if exists "authenticated update" on smm_metrics;
+drop policy if exists "authenticated delete" on smm_metrics;
+create policy "public read" on smm_metrics for select using (true);
+create policy "authenticated insert" on smm_metrics for insert with check (auth.role() = 'authenticated');
+create policy "authenticated update" on smm_metrics for update using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "authenticated delete" on smm_metrics for delete using (auth.role() = 'authenticated');
+
+insert into tools (name, description, icon, href, sort_order)
+select 'Social Media Marketing',
+       'Draft posts with an image or video, preview and share them, log posting dates and impressions/clicks over time, and export it all to Excel.',
+       '📣',
+       'tools/social-media-marketing/index.html',
+       3
+where not exists (select 1 from tools where href = 'tools/social-media-marketing/index.html');
+
 insert into storage.buckets (id, name, public)
 values ('media', 'media', true)
 on conflict (id) do nothing;
